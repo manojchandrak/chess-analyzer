@@ -1,9 +1,17 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { themeOf, useBoardPrefs } from "../lib/boardPrefs";
 
 const GLYPH: Record<string, string> = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
 const NAME: Record<string, string> = { k: "king", q: "queen", r: "rook", b: "bishop", n: "knight", p: "pawn" };
 const FILES = "abcdefgh";
+const preloaded = new Set<string>();
+
+/** Loads all 12 pieces of a set up front so pieces don't flash in as they move. */
+function preload(set: string) {
+  if (set === "unicode" || preloaded.has(set)) return;
+  preloaded.add(set);
+  for (const c of "wb") for (const p of "KQRBNP") new Image().src = `${import.meta.env.BASE_URL}pieces/${set}/${c}${p}.svg`;
+}
 
 interface Props {
   fen: string;
@@ -17,6 +25,7 @@ interface Props {
  * the viewer's chosen piece set and board colors. */
 export function Board({ fen, flipped = false, lastMove, badge }: Props) {
   const { pieces, theme } = useBoardPrefs();
+  useEffect(() => preload(pieces), [pieces]);
   const colors = themeOf(theme);
   const rows = fen.split(" ")[0].split("/");
   const squares: { name: string; piece: string | null; dark: boolean }[] = [];

@@ -118,9 +118,19 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   useEffect(() => {
     if (!engineOn) return;
     const live = getLiveEngine();
-    live.onInfo(setLive);
+    // The engine reports many times a second; redraw at most every 200 ms.
+    let latest: LiveInfo | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    live.onInfo((info) => {
+      latest = info;
+      timer ??= setTimeout(() => {
+        timer = null;
+        setLive(latest);
+      }, 200);
+    });
     live.analyze(fen);
     return () => {
+      if (timer) clearTimeout(timer);
       live.onInfo(null);
       live.stop();
     };
@@ -147,12 +157,22 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
 
   const currentAnalysis = analysis && ply > 0 ? analysis.moves[ply - 1] : null;
 
-  // What the eval bar shows: the live engine when it's on this position, else the review.
+  // What the eval bar shows. To keep it steady while stepping through moves: the
+  // review's eval until the live engine is at least as deep on this position,
+  // or the live engine's last reading when there's no review.
   const liveHere = engineOn && live && live.fen === fen ? live : null;
+  const liveShown = engineOn ? (liveHere ?? live) : null;
+  const liveScore = liveShown
+    ? (() => {
+        const sign = liveShown.fen.split(" ")[1] === "w" ? 1 : -1;
+        return { cp: liveShown.cp === null ? null : sign * liveShown.cp, mate: liveShown.mate === null ? null : sign * liveShown.mate, depth: liveShown.depth };
+      })()
+    : null;
   let bar: { cp: number | null; mate: number | null; depth: number | null; mated?: "w" | "b" } | null = null;
-  if (liveHere) {
-    const sign = fen.split(" ")[1] === "w" ? 1 : -1;
-    bar = { cp: liveHere.cp === null ? null : sign * liveHere.cp, mate: liveHere.mate === null ? null : sign * liveHere.mate, depth: liveHere.depth };
+  if (liveHere && liveScore && (!analysis || liveHere.depth >= 14)) {
+    bar = liveScore;
+  } else if (!analysis && liveScore) {
+    bar = liveScore;
   } else if (analysis) {
     const v = currentAnalysis ? currentAnalysis.evalAfterWhite : 20;
     bar = Math.abs(v) >= MATE_CP ? { cp: null, mate: v > 0 ? Math.max(1, Math.round((100000 - v) / 100)) : -Math.max(1, Math.round((100000 + v) / 100)), depth: null } : { cp: v, mate: null, depth: null };
@@ -216,8 +236,8 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
 
       <div className="viewer-body">
         <div className="viewer-board">
-          <div className={`board-wrap${bar ? " board-wrap-bar" : ""}`}>
-            {bar && <EvalBar cp={bar.cp} mate={bar.mate} flipped={flipped} depth={bar.depth} mated={bar.mated} />}
+          <div className="board-wrap board-wrap-bar">
+            <EvalBar cp={bar?.cp ?? 0} mate={bar?.mate ?? null} flipped={flipped} depth={bar?.depth} mated={bar?.mated} empty={!bar} />
             <Board
               fen={fen}
               flipped={flipped}
@@ -280,10 +300,12 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
               Stockfish
             </label>
             {engineOn && (
-              <span className="engine-line">
-                {liveHere ? (
+              <span className={`engine-line${liveHere ? "" : " engine-line-stale"}`}>
+                {current?.san.includes("#") ? (
+                  <strong>Checkmate</strong>
+                ) : liveShown && liveScore ? (
                   <>
-                    <strong>{bar?.mated ? "Checkmate" : bar ? formatScore(bar.cp, bar.mate) : ""}</strong> <span className="muted small">depth {liveHere.depth}</span> <span className="pv">{pvToSan(fen, liveHere.pv)}</span>
+                    <strong>{formatScore(liveScore.cp, liveScore.mate)}</strong> <span className="muted small">depth {liveShown.depth}</span> <span className="pv">{pvToSan(liveShown.fen, liveShown.pv)}</span>
                   </>
                 ) : (
                   <span className="muted small">thinking…</span>
@@ -292,6 +314,13 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             )}
           </div>
 
+          {!currentAnalysis && (
+            <div className="move-verdict">
+              <span className="muted">
+                {analysis ? "Step through the moves to see how each one was rated." : progress ? "Stockfish is rating every move…" : "Run the Stockfish review to rate every move."}
+              </span>
+            </div>
+          )}
           {currentAnalysis && meta && (
             <div className="move-verdict" style={{ borderColor: meta.color }}>
               <span className="class-icon" style={{ background: meta.color }}>

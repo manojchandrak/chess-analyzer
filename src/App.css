@@ -531,3 +531,11 @@ select, input[type="search"], .field input {
 .btn-on { border-color: var(--accent); background: var(--accent-soft); }
 .voice-picker select { max-width: 220px; }
 .voice-picker .btn { padding: 5px 10px; }
+
+/* ---------- Fixed-height panels so the page doesn't jump while analyzing ---------- */
+.engine-panel { height: 64px; }
+.engine-line { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.engine-line-stale { opacity: 0.55; }
+.opening-line { height: 58px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.move-verdict { height: 64px; overflow: hidden; }
+.move-verdict > span:last-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
