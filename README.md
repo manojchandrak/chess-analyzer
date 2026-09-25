@@ -25,7 +25,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Petrosian, Fischer, Karpov, Kasparov and Carlsen, with style profiles, repertoire,
   a featured famous game each, and a searchable list of ~23,000 games.
 - **Game viewer**: step through any game on a board, with Stockfish analysis,
-  move-quality marks and an evaluation chart.
+  move-quality marks and an evaluation chart. Choose from 7 piece sets and 8
+  board color themes (remembered in your browser).
 - **Analyze a PGN**: paste or drop a PGN for the full single-game analysis.
 
 ## How style is measured
@@ -84,6 +85,10 @@ Pushes to `main` auto-deploy to GitHub Pages via
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 ## License / attribution
+
+Piece sets in `public/pieces/` come from the Lichess repository; authors and
+licenses (GPLv2+, GPLv3+, Apache 2.0, MIT) are listed in
+[`public/pieces/CREDITS.md`](public/pieces/CREDITS.md).
 
 This project bundles a precompiled build of
 [Stockfish.js](https://github.com/nmrugg/stockfish.js) (`public/engine/`),

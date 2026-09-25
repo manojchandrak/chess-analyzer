@@ -1,4 +1,8 @@
+import type { CSSProperties } from "react";
+import { themeOf, useBoardPrefs } from "../lib/boardPrefs";
+
 const GLYPH: Record<string, string> = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+const NAME: Record<string, string> = { k: "king", q: "queen", r: "rook", b: "bishop", n: "knight", p: "pawn" };
 const FILES = "abcdefgh";
 
 interface Props {
@@ -7,8 +11,11 @@ interface Props {
   lastMove?: { from: string; to: string } | null;
 }
 
-/** A static board rendered from a FEN, with the last move highlighted. */
+/** A static board rendered from a FEN, with the last move highlighted, drawn in
+ * the viewer's chosen piece set and board colors. */
 export function Board({ fen, flipped = false, lastMove }: Props) {
+  const { pieces, theme } = useBoardPrefs();
+  const colors = themeOf(theme);
   const rows = fen.split(" ")[0].split("/");
   const squares: { name: string; piece: string | null; dark: boolean }[] = [];
   rows.forEach((row, r) => {
@@ -25,16 +32,26 @@ export function Board({ fen, flipped = false, lastMove }: Props) {
   const ordered = flipped ? [...squares].reverse() : squares;
 
   return (
-    <div className="board" role="img" aria-label={`Chess position ${fen}`}>
+    <div className="board" role="img" aria-label={`Chess position ${fen}`} style={{ "--sq-light": colors.light, "--sq-dark": colors.dark } as CSSProperties}>
       {ordered.map((sq, i) => {
         const highlight = lastMove && (sq.name === lastMove.from || sq.name === lastMove.to);
-        const showRank = i % 8 === 0;
-        const showFile = i >= 56;
+        const white = sq.piece !== null && sq.piece === sq.piece.toUpperCase();
+        const kind = sq.piece?.toLowerCase() ?? "";
         return (
           <div key={sq.name} className={`sq ${sq.dark ? "sq-dark" : "sq-light"}${highlight ? " sq-last" : ""}`}>
-            {showRank && <span className="coord coord-rank">{sq.name[1]}</span>}
-            {showFile && <span className="coord coord-file">{sq.name[0]}</span>}
-            {sq.piece && <span className={`piece ${sq.piece === sq.piece.toUpperCase() ? "piece-w" : "piece-b"}`}>{GLYPH[sq.piece.toLowerCase()]}</span>}
+            {i % 8 === 0 && <span className="coord coord-rank">{sq.name[1]}</span>}
+            {i >= 56 && <span className="coord coord-file">{sq.name[0]}</span>}
+            {sq.piece &&
+              (pieces === "unicode" ? (
+                <span className={`piece ${white ? "piece-w" : "piece-b"}`}>{GLYPH[kind]}</span>
+              ) : (
+                <img
+                  className="piece-img"
+                  src={`${import.meta.env.BASE_URL}pieces/${pieces}/${white ? "w" : "b"}${kind.toUpperCase()}.svg`}
+                  alt={`${white ? "white" : "black"} ${NAME[kind]}`}
+                  draggable={false}
+                />
+              ))}
           </div>
         );
       })}

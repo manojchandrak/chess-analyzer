@@ -4,6 +4,7 @@ import type { StockfishEngine } from "../lib/engine";
 import { toPgn, type GameRecord } from "../lib/games";
 import type { ParsedGame } from "../lib/pgn";
 import { Board } from "./Board";
+import { BoardSettings } from "./BoardSettings";
 import { EvalChart } from "./EvalChart";
 import { PhaseTable } from "./PhaseTable";
 import { PlayerSummary } from "./PlayerSummary";
@@ -145,6 +146,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
               )}
             </p>
           )}
+          <BoardSettings />
         </div>
 
         <div className="viewer-moves">
