@@ -1,12 +1,15 @@
 import { Chess } from "chess.js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatScore } from "../lib/accuracy";
 import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type AnalysisResult } from "../lib/analyze";
+import { setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
 import { CLASS_META } from "../lib/classify";
 import { getLiveEngine, type LiveInfo, type StockfishEngine } from "../lib/engine";
 import { setGameStats, statsFromAnalysis } from "../lib/gameStats";
 import { toPgn, type GameRecord } from "../lib/games";
+import { loadOpenings, openingsAlong, type OpeningName } from "../lib/openings";
 import type { ParsedGame } from "../lib/pgn";
+import { sanToSpeech, say, speechSupported, stopSpeaking } from "../lib/speech";
 import { Board } from "./Board";
 import { BoardSettings } from "./BoardSettings";
 import { ClassificationTable } from "./ClassificationTable";
@@ -68,9 +71,45 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const [engineOn, setEngineOn] = useState(false);
   const [live, setLive] = useState<LiveInfo | null>(null);
   const [copied, setCopied] = useState(false);
+  const [openingDb, setOpeningDb] = useState<Map<string, OpeningName> | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const { speak } = useBoardPrefs();
+  const spokenPly = useRef(0);
 
   const current = ply > 0 ? game.moves[ply - 1] : null;
   const fen = current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
+  const openings = useMemo(() => (openingDb ? openingsAlong(game.moves, openingDb) : null), [openingDb, game]);
+  const opening = openings?.perPly[ply] ?? null;
+
+  useEffect(() => {
+    loadOpenings().then(setOpeningDb);
+    return () => stopSpeaking();
+  }, []);
+
+  // Autoplay: step forward every 1.6 s until the end of the game.
+  useEffect(() => {
+    if (!playing) return;
+    if (ply >= game.moves.length) {
+      setPlaying(false);
+      return;
+    }
+    const t = setTimeout(() => setPly((p) => p + 1), 1600);
+    return () => clearTimeout(t);
+  }, [playing, ply, game]);
+
+  // Read each newly shown move aloud (with its label when notable, and the
+  // opening name when a new one is reached).
+  useEffect(() => {
+    if (!speak || ply === spokenPly.current) return;
+    spokenPly.current = ply;
+    if (!current) return;
+    const parts = [sanToSpeech(current.san)];
+    const cls = analysis?.moves[ply - 1]?.cls;
+    if (cls && ["brilliant", "great", "miss", "mistake", "blunder"].includes(cls)) parts.push(`${CLASS_META[cls].label}!`);
+    const prevOpening = openings?.perPly[ply - 1];
+    if (opening && opening.name !== prevOpening?.name) parts.push(opening.name.replace(/:/g, ","));
+    say(parts.join(". "));
+  }, [ply, speak, current, analysis, opening, openings]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -98,7 +137,8 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
     if (!engine) return;
     setEngineOn(true);
     setProgress({ done: 0, total: game.moves.length + 1 });
-    const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 2, bookPlies: record?.openingPly ?? 0 });
+    const bookPlies = Math.max(record?.openingPly ?? 0, openingsAlong(game.moves, await loadOpenings()).bookPlies);
+    const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 2, bookPlies });
     const key = cacheKey(atDepth);
     if (key) analysisCache.set(key, result);
     if (record?.playerColor) setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
@@ -209,6 +249,32 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             <button className="btn btn-ghost" onClick={() => setFlipped((f) => !f)} aria-label="Flip board">
               ⇅
             </button>
+            <button
+              className={`btn btn-ghost${playing ? " btn-on" : ""}`}
+              onClick={() => {
+                if (!playing && ply >= game.moves.length) setPly(0);
+                setPlaying((p) => !p);
+              }}
+              aria-label={playing ? "Pause autoplay" : "Autoplay the game"}
+              title={playing ? "Pause" : "Play through the game"}
+            >
+              {playing ? "⏸" : "⏯"}
+            </button>
+            {speechSupported() && (
+              <button
+                className={`btn btn-ghost${speak ? " btn-on" : ""}`}
+                onClick={() => {
+                  if (speak) stopSpeaking();
+                  spokenPly.current = ply;
+                  setBoardPrefs({ speak: !speak });
+                }}
+                aria-pressed={speak}
+                aria-label="Read moves aloud"
+                title={speak ? "Stop reading moves aloud" : "Read moves aloud"}
+              >
+                {speak ? "🔊" : "🔈"}
+              </button>
+            )}
           </div>
           <BoardSettings />
         </div>
@@ -249,6 +315,23 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
               </span>
             </div>
           )}
+
+          <div className="opening-line" aria-live="polite">
+            {opening ? (
+              <>
+                <span className="eco">{opening.eco}</span> {opening.name}
+                {openings && ply > openings.bookPlies && game.moves[openings.bookPlies] && (
+                  <span className="muted small">
+                    {" "}
+                    · out of book from {game.moves[openings.bookPlies].moveNumber}
+                    {game.moves[openings.bookPlies].color === "w" ? "." : "…"} {game.moves[openings.bookPlies].san}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="muted">{ply === 0 ? "Starting position" : "Opening not in the book"}</span>
+            )}
+          </div>
 
           <div className="move-list">
             {pairs.map((p) => (

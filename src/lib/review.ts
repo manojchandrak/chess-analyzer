@@ -8,6 +8,7 @@ import type { StockfishEngine } from "./engine.ts";
 import { ecoFamily } from "./eco.ts";
 import { setGameStats, statsFromAnalysis, type GameStats } from "./gameStats.ts";
 import { scoreFor, type GameRecord } from "./games.ts";
+import { loadOpenings, openingsAlong } from "./openings.ts";
 import { parseRecord } from "./pgn.ts";
 
 const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
@@ -38,7 +39,7 @@ export interface GameReview {
   stats: GameStats;
 }
 
-const CACHE_PREFIX = "chess-analyzer:review:v3:";
+const CACHE_PREFIX = "chess-analyzer:review:v4:";
 
 function cached(key: string): GameReview | null {
   try {
@@ -78,9 +79,10 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
     return null;
   }
   if (parsed.moves.length < 2) return null;
+  const bookPlies = Math.max(game.openingPly ?? 0, openingsAlong(parsed.moves, await loadOpenings()).bookPlies);
   const analysis = game.evals
-    ? analyzeWithEvals(parsed, evalsFromWhitePerspective(parsed, game.evals), { bookPlies: game.openingPly ?? 0 })
-    : await analyzeGame(parsed, engine as StockfishEngine, depth, onProgress, { multiPv: 2, bookPlies: game.openingPly ?? 0 });
+    ? analyzeWithEvals(parsed, evalsFromWhitePerspective(parsed, game.evals), { bookPlies })
+    : await analyzeGame(parsed, engine as StockfishEngine, depth, onProgress, { multiPv: 2, bookPlies });
 
   const moves: ReviewedMove[] = [];
   analysis.moves.forEach((m, i) => {

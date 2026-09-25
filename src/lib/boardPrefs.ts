@@ -40,10 +40,12 @@ export const BOARD_THEMES: BoardTheme[] = [
 export interface BoardPrefs {
   pieces: string;
   theme: string;
+  /** Read moves aloud as they are played. */
+  speak: boolean;
 }
 
 const KEY = "chess-analyzer:board";
-const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown" };
+const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false };
 const listeners = new Set<() => void>();
 
 function read(): BoardPrefs {
@@ -52,6 +54,7 @@ function read(): BoardPrefs {
     return {
       pieces: PIECE_SETS.some((p) => p.id === saved.pieces) ? saved.pieces! : DEFAULTS.pieces,
       theme: BOARD_THEMES.some((t) => t.id === saved.theme) ? saved.theme! : DEFAULTS.theme,
+      speak: saved.speak === true,
     };
   } catch {
     return DEFAULTS;

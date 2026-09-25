@@ -30,6 +30,13 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
   per-player classification table, accuracy by phase and a clickable evaluation
   chart. Choose from 7 piece sets and 8 board color themes.
+- **Opening names**: the viewer names the opening and variation as you step
+  through moves (e.g. "B97 Sicilian Defense: Najdorf Variation, Poisoned Pawn
+  Accepted") and shows where the game left theory; the same data marks Book
+  moves in reviews for every game source.
+- **Spoken moves and autoplay**: turn on 🔈 to hear each move read aloud
+  ("Knight takes E 5, check"), with notable labels and new opening names;
+  ⏯ plays through the game automatically. Uses your browser's built-in speech.
 - **Sort games** (yours or a legend's) by most brilliant or great moves,
   accuracy, game performance (estimated rating), fewest/most blunders,
   strongest opponent, date or length. Every review, wherever it runs, records
@@ -83,6 +90,16 @@ them, and run:
 
 ```bash
 node scripts/build-legends.ts
+```
+
+## Opening names data
+
+`public/openings.json` is built from Lichess's
+[chess-openings](https://github.com/lichess-org/chess-openings) dataset (CC0).
+Download `a.tsv`–`e.tsv` into `data-source/openings/` and run:
+
+```bash
+node scripts/build-openings.ts
 ```
 
 ## Development
