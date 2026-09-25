@@ -76,8 +76,7 @@ function statsFor(name: string, pgnElo: number | null, moves: MoveAnalysis[]): P
 }
 
 /** Runs a full engine analysis of a parsed game: evaluates every position once,
- * derives per-move centipawn loss and accuracy, segments the game into
- * opening/middlegame/endgame, and aggregates per-player stats. */
+ * then derives per-move centipawn loss and accuracy (see analyzeWithEvals). */
 export async function analyzeGame(
   game: ParsedGame,
   engine: StockfishEngine,
@@ -91,7 +90,30 @@ export async function analyzeGame(
     evals.push(await engine.evaluate(fens[i], depth));
     onProgress?.(i + 1, fens.length);
   }
+  return analyzeWithEvals(game, evals);
+}
 
+/** Converts Lichess server analysis (White's perspective, one eval after each
+ * ply) into side-to-move evals for every position, including the start. */
+export function evalsFromWhitePerspective(game: ParsedGame, whiteEvals: { cp: number | null; mate: number | null }[]): EngineEval[] {
+  const out: EngineEval[] = [{ cp: 20, mate: null }];
+  game.moves.forEach((move, i) => {
+    const e = whiteEvals[i];
+    const whiteToMove = move.color === "b";
+    if (!e) {
+      // Lichess leaves out the final position after checkmate: the side to move is mated.
+      out.push(move.san.includes("#") ? { cp: null, mate: 0 } : out[out.length - 1]);
+      return;
+    }
+    const sign = whiteToMove ? 1 : -1;
+    out.push(e.mate !== null ? { cp: null, mate: e.mate === 0 ? 0 : sign * e.mate } : { cp: sign * (e.cp ?? 0), mate: null });
+  });
+  return out;
+}
+
+/** Per-move centipawn loss, accuracy and phase from one eval per position
+ * (side-to-move perspective; evals[0] is the position before the first move). */
+export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[]): AnalysisResult {
   const openingEndPly = Math.min(20, game.moves.length);
   let endgameStartPly: number | null = null;
   for (const move of game.moves) {
@@ -118,7 +140,7 @@ export async function analyzeGame(
 
     const evalAfterWhite = mover === "w" ? scoreAfterMover : -scoreAfterMover;
 
-    return { ...move, cpLoss, accuracy, quality: classifyMove(cpLoss), phase, evalAfterWhite };
+    return { ...move, cpLoss, accuracy, quality: classifyMove(winBefore - winAfter), phase, evalAfterWhite };
   });
 
   const whiteMoves = moves.filter((m) => m.color === "w");

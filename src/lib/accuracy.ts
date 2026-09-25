@@ -27,9 +27,12 @@ export function moveAccuracy(winPercentBefore: number, winPercentAfter: number):
 
 export type MoveQuality = "best" | "inaccuracy" | "mistake" | "blunder";
 
-export function classifyMove(cpLoss: number): MoveQuality {
-  if (cpLoss < 25) return "best";
-  if (cpLoss < 50) return "inaccuracy";
-  if (cpLoss < 100) return "mistake";
+/** Lichess's thresholds: how much a move drops the mover's winning chances
+ * (0-100 scale). Judging by win% rather than raw centipawns means dropping from
+ * +8 to +6 in a won position isn't a "blunder", while +1 to -1 is. */
+export function classifyMove(winPercentDrop: number): MoveQuality {
+  if (winPercentDrop < 5) return "best";
+  if (winPercentDrop < 10) return "inaccuracy";
+  if (winPercentDrop < 15) return "mistake";
   return "blunder";
 }

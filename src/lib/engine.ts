@@ -69,3 +69,11 @@ export class StockfishEngine {
     this.worker.terminate();
   }
 }
+
+let shared: StockfishEngine | null = null;
+
+/** The page's one engine worker, created on first use and kept for the page's lifetime. */
+export function getEngine(): StockfishEngine {
+  shared ??= new StockfishEngine(`${import.meta.env.BASE_URL}engine/stockfish-19-lite-single.js`);
+  return shared;
+}

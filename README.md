@@ -1,10 +1,42 @@
 # Chess Game Analyzer
 
-Upload a PGN and get a Stockfish-powered breakdown of both players' accuracy
-by opening/middlegame/endgame, plus an estimated performance rating —
-entirely client-side, no server or upload involved.
+Load your games from Lichess and Chess.com to see your playing style and
+where you can improve, compare yourself with 12 legendary players, and study
+their games, or upload any PGN for a Stockfish breakdown of accuracy by
+opening/middlegame/endgame. Everything runs in your browser.
 
 Live at: https://manojchandrak.github.io/chess-analyzer/
+
+## Features
+
+- **My games**: enter a Lichess and/or Chess.com username. Recent games load
+  straight from each site's public API (no login, nothing sent anywhere else).
+  - **Playing style**: five traits (aggression, sacrificial risk, endgame
+    appetite, solidity, simplification) measured from the moves themselves,
+    an overall archetype, and the legends whose style is closest to yours.
+  - **Where to improve**: suggestions backed by your numbers, e.g. losses on
+    time, weak openings, color imbalance, king safety, endgame results.
+  - **Engine review**: Stockfish reviews your recent games (games Lichess
+    already analyzed are used for free) to find your weakest phase, blunders
+    that hang pieces, blunders under time pressure, and winning positions you
+    didn't convert. Reviews are cached in your browser.
+  - Filter everything by time control; open any game in the viewer.
+- **Legends**: Morphy, Steinitz, Lasker, Capablanca, Alekhine, Botvinnik, Tal,
+  Petrosian, Fischer, Karpov, Kasparov and Carlsen, with style profiles, repertoire,
+  a featured famous game each, and a searchable list of ~23,000 games.
+- **Game viewer**: step through any game on a board, with Stockfish analysis,
+  move-quality marks and an evaluation chart.
+- **Analyze a PGN**: paste or drop a PGN for the full single-game analysis.
+
+## How style is measured
+
+Style traits come from replaying every game (no engine needed): checks per
+move, flank pawn pushes toward the enemy king, opposite-side castling, quick
+wins, playing on while down material, how often and how long games reach an
+endgame, castling, early queen moves, draws, and early queen trades. Each metric
+is scaled between the lowest and highest of the 12 legends (0 = least, 100 =
+most). Legends' profiles use their classical over-the-board games; blitz and
+bullet games naturally read more aggressive and less endgame-heavy.
 
 ## How it works
 
@@ -21,6 +53,17 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 - **Estimated rating**: average centipawn loss is mapped to an approximate
   Elo via a calibrated lookup curve (`src/lib/rating.ts`). This is a rough,
   single-game estimate, not an official rating — treat it as directional.
+
+## Legends data
+
+The legends' games come from [PGN Mentor](https://www.pgnmentor.com/files.html)'s
+player collections. To rebuild `public/legends/`, download the player files
+(e.g. `https://www.pgnmentor.com/players/Tal.zip`) into `data-source/`, unzip
+them, and run:
+
+```bash
+node scripts/build-legends.ts
+```
 
 ## Development
 

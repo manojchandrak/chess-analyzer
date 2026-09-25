@@ -1,10 +1,16 @@
 import { Chess } from "chess.js";
+import type { GameRecord } from "./games.ts";
 
 export interface ParsedMove {
   ply: number; // 1-indexed, White's 1st move = 1, Black's 1st move = 2
   moveNumber: number; // full move number (both colors share one)
   color: "w" | "b";
   san: string;
+  /** Piece moved and piece captured (chess.js letters), for tactical patterns. */
+  piece: string;
+  captured: string | null;
+  from: string;
+  to: string;
   fenBefore: string;
   fenAfter: string;
 }
@@ -36,6 +42,10 @@ export function parsePgn(pgn: string): ParsedGame {
       moveNumber: Math.floor(index / 2) + 1,
       color: move.color as "w" | "b",
       san: move.san,
+      piece: move.piece,
+      captured: move.captured ?? null,
+      from: move.from,
+      to: move.to,
       fenBefore,
       fenAfter,
     };
@@ -54,4 +64,27 @@ export function parsePgn(pgn: string): ParsedGame {
     result: headers.Result ?? "*",
     moves,
   };
+}
+
+/** Replays a GameRecord's SAN moves into the same shape as parsePgn. */
+export function parseRecord(g: GameRecord): ParsedGame {
+  const chess = new Chess();
+  const moves: ParsedMove[] = [];
+  for (const san of g.moves.split(" ").filter(Boolean)) {
+    const fenBefore = chess.fen();
+    const move = chess.move(san);
+    moves.push({
+      ply: moves.length + 1,
+      moveNumber: Math.floor(moves.length / 2) + 1,
+      color: move.color as "w" | "b",
+      san: move.san,
+      piece: move.piece,
+      captured: move.captured ?? null,
+      from: move.from,
+      to: move.to,
+      fenBefore,
+      fenAfter: chess.fen(),
+    });
+  }
+  return { white: g.white, black: g.black, whiteElo: g.whiteElo, blackElo: g.blackElo, result: g.result, moves };
 }
