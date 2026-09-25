@@ -1,7 +1,14 @@
+import { useEffect, useState } from "react";
 import { BOARD_THEMES, PIECE_SETS, setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
+import { englishVoices, onVoicesChanged, say, speechSupported } from "../lib/speech";
 
 export function BoardSettings() {
-  const { pieces, theme } = useBoardPrefs();
+  const { pieces, theme, voice } = useBoardPrefs();
+  const [voices, setVoices] = useState(englishVoices);
+
+  // Browsers load their voice list asynchronously.
+  useEffect(() => onVoicesChanged(() => setVoices(englishVoices())), []);
+
   return (
     <div className="board-settings">
       <label>
@@ -28,6 +35,22 @@ export function BoardSettings() {
           />
         ))}
       </div>
+      {speechSupported() && voices.length > 0 && (
+        <label className="voice-picker">
+          Voice
+          <select value={voice ?? ""} onChange={(e) => setBoardPrefs({ voice: e.target.value || null })}>
+            <option value="">Automatic ({voices[0].name.replace(/^Microsoft /, "").replace(/ Online \(Natural\)/, "")})</option>
+            {voices.map((v) => (
+              <option key={v.voiceURI} value={v.voiceURI}>
+                {v.name} ({v.lang})
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn btn-ghost" onClick={() => say("Knight takes E 5, check")} title="Hear this voice">
+            ▶ Test
+          </button>
+        </label>
+      )}
     </div>
   );
 }

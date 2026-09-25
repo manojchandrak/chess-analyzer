@@ -35,7 +35,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Accepted") and shows where the game left theory; the same data marks Book
   moves in reviews for every game source.
 - **Spoken moves and autoplay**: turn on 🔈 to hear each move read aloud
-  ("Knight takes E 5, check"); ⏯ plays through the game automatically. Uses your browser's built-in speech.
+  ("Knight takes E 5, check") in the most natural English voice your device
+  offers, or one you pick and test from the Voice menu; ⏯ plays through the game automatically. Uses your browser's built-in speech.
 - **Sort games** (yours or a legend's) by most brilliant or great moves,
   accuracy, game performance (estimated rating), fewest/most blunders,
   strongest opponent, date or length. Every review, wherever it runs, records

@@ -529,3 +529,5 @@ select, input[type="search"], .field input {
 .opening-line { padding: 8px 12px; border-radius: 10px; background: var(--bg-alt); border: 1px solid var(--border); font-size: 0.9rem; line-height: 1.4; }
 .opening-line .eco { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 1px 6px; margin-right: 4px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
 .btn-on { border-color: var(--accent); background: var(--accent-soft); }
+.voice-picker select { max-width: 220px; }
+.voice-picker .btn { padding: 5px 10px; }

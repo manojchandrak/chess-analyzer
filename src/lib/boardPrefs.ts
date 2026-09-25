@@ -1,5 +1,6 @@
 // Board appearance: piece set and square colors, remembered per browser.
 import { useSyncExternalStore } from "react";
+import { setPreferredVoice } from "./speech";
 
 export interface PieceSet {
   id: string;
@@ -42,10 +43,12 @@ export interface BoardPrefs {
   theme: string;
   /** Read moves aloud as they are played. */
   speak: boolean;
+  /** Chosen speech voice (voiceURI); null = best available. */
+  voice: string | null;
 }
 
 const KEY = "chess-analyzer:board";
-const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false };
+const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false, voice: null };
 const listeners = new Set<() => void>();
 
 function read(): BoardPrefs {
@@ -55,6 +58,7 @@ function read(): BoardPrefs {
       pieces: PIECE_SETS.some((p) => p.id === saved.pieces) ? saved.pieces! : DEFAULTS.pieces,
       theme: BOARD_THEMES.some((t) => t.id === saved.theme) ? saved.theme! : DEFAULTS.theme,
       speak: saved.speak === true,
+      voice: typeof saved.voice === "string" ? saved.voice : null,
     };
   } catch {
     return DEFAULTS;
@@ -62,9 +66,11 @@ function read(): BoardPrefs {
 }
 
 let current = read();
+setPreferredVoice(current.voice);
 
 export function setBoardPrefs(change: Partial<BoardPrefs>): void {
   current = { ...current, ...change };
+  setPreferredVoice(current.voice);
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {
