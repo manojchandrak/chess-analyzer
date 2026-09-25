@@ -6,6 +6,7 @@ import type { MoveQuality } from "./accuracy.ts";
 import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type Phase } from "./analyze.ts";
 import type { StockfishEngine } from "./engine.ts";
 import { ecoFamily } from "./eco.ts";
+import { setGameStats, statsFromAnalysis, type GameStats } from "./gameStats.ts";
 import { scoreFor, type GameRecord } from "./games.ts";
 import { parseRecord } from "./pgn.ts";
 
@@ -34,9 +35,10 @@ export interface GameReview {
   moves: ReviewedMove[];
   /** "lichess" when the site's own server analysis was used. */
   engine: "lichess" | "stockfish";
+  stats: GameStats;
 }
 
-const CACHE_PREFIX = "chess-analyzer:review:v2:";
+const CACHE_PREFIX = "chess-analyzer:review:v3:";
 
 function cached(key: string): GameReview | null {
   try {
@@ -63,7 +65,10 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
   if (!color || score === null) return null;
   const key = `${game.id}:${game.evals ? "lichess" : depth}`;
   const hit = cached(key);
-  if (hit) return hit;
+  if (hit) {
+    setGameStats(hit.gameId, hit.stats);
+    return hit;
+  }
 
   if (!game.evals && !engine) return null;
   let parsed;
@@ -74,8 +79,8 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
   }
   if (parsed.moves.length < 2) return null;
   const analysis = game.evals
-    ? analyzeWithEvals(parsed, evalsFromWhitePerspective(parsed, game.evals))
-    : await analyzeGame(parsed, engine as StockfishEngine, depth, onProgress);
+    ? analyzeWithEvals(parsed, evalsFromWhitePerspective(parsed, game.evals), { bookPlies: game.openingPly ?? 0 })
+    : await analyzeGame(parsed, engine as StockfishEngine, depth, onProgress, { multiPv: 2, bookPlies: game.openingPly ?? 0 });
 
   const moves: ReviewedMove[] = [];
   analysis.moves.forEach((m, i) => {
@@ -97,8 +102,10 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
     });
   });
 
-  const review: GameReview = { gameId: game.id, color, score, family: ecoFamily(game.eco), clockInitial: game.clockInitial, moves, engine: game.evals ? "lichess" : "stockfish" };
+  const stats = statsFromAnalysis(analysis, color);
+  const review: GameReview = { gameId: game.id, color, score, family: ecoFamily(game.eco), clockInitial: game.clockInitial, moves, engine: game.evals ? "lichess" : "stockfish", stats };
   store(key, review);
+  setGameStats(game.id, stats);
   return review;
 }
 

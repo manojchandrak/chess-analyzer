@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ecoFamily } from "../lib/eco";
+import { getEngine } from "../lib/engine";
 import { scoreFor, type GameRecord } from "../lib/games";
 import { loadLegendGames, loadLegendIndex } from "../lib/legendData";
 import type { LegendIndexEntry } from "../lib/legends";
 import { archetypeOf, similarity, type Traits } from "../lib/profile";
+import { reviewGame } from "../lib/review";
 import { GameList } from "./GameList";
 import { ProfileView } from "./ProfileView";
+import { ProgressBar } from "./ProgressBar";
 
 interface Props {
   selectedId: string | null;
@@ -76,6 +79,15 @@ function LegendDetail({
   const [color, setColor] = useState<"all" | "w" | "b">("all");
   const [family, setFamily] = useState("all");
   const [classicalOnly, setClassicalOnly] = useState(false);
+  const [reviewing, setReviewing] = useState<{ game: number; of: number; done: number; total: number } | null>(null);
+
+  async function reviewGames(todo: GameRecord[]) {
+    for (let i = 0; i < todo.length; i++) {
+      setReviewing({ game: i + 1, of: todo.length, done: 0, total: 1 });
+      await reviewGame(todo[i], getEngine(), 10, (done, total) => setReviewing({ game: i + 1, of: todo.length, done, total }));
+    }
+    setReviewing(null);
+  }
 
   useEffect(() => {
     loadLegendGames(legend).then(setGames, (e: Error) => setError(e.message));
@@ -190,7 +202,8 @@ function LegendDetail({
                 </label>
               )}
             </div>
-            <GameList key={`${query}|${result}|${color}|${family}|${classicalOnly}`} games={filtered} onOpen={(g) => onOpenGame(g, headingFor(g))} />
+            {reviewing && <ProgressBar done={reviewing.done} total={reviewing.total} label={`Reviewing game ${reviewing.game} of ${reviewing.of}`} />}
+            <GameList key={`${query}|${result}|${color}|${family}|${classicalOnly}`} games={filtered} onOpen={(g) => onOpenGame(g, headingFor(g))} onReview={reviewGames} reviewing={!!reviewing} />
           </>
         )}
       </section>

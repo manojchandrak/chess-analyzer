@@ -30,6 +30,11 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
   per-player classification table, accuracy by phase and a clickable evaluation
   chart. Choose from 7 piece sets and 8 board color themes.
+- **Sort games** (yours or a legend's) by most brilliant or great moves,
+  accuracy, game performance (estimated rating), fewest/most blunders,
+  strongest opponent, date or length. Every review, wherever it runs, records
+  these numbers in your browser; legends' lists have a "Review next 10 games"
+  button to rank more of them.
 - **Analyze a game**: pick one of your recent Lichess or Chess.com games for a
   full review, or paste/drop any PGN. Your own games are reviewed as soon as
   they open.

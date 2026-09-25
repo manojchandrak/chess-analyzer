@@ -514,3 +514,13 @@ select, input[type="search"], .field input {
 .recent-games h3 { margin: 0 0 12px; font-size: 1.05rem; }
 .recent-games .game-list { margin-top: 8px; }
 .or-heading { font-size: 1rem; margin: 8px 0 12px; color: var(--text-muted); font-weight: 600; }
+
+/* ---------- Game list sorting ---------- */
+.list-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.list-toolbar label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
+.count-brilliant { color: #1baca6; font-weight: 700; }
+.count-great { color: #5b8bb0; font-weight: 700; }
+@media (max-width: 560px) {
+  .game-list th, .game-list td { padding: 6px 4px; font-size: 0.82rem; }
+  .game-list .tag { display: none; }
+}

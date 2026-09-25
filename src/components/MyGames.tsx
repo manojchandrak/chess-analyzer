@@ -60,13 +60,6 @@ export function MyGames({ engine, onOpenGame, onOpenLegend, onTraits }: Props) {
   const filteredReviews = useMemo(() => filtered.map((g) => reviews.get(g.id)).filter((r): r is GameReview => !!r), [filtered, reviews]);
   const summary = useMemo(() => (filteredReviews.length ? summarize(filteredReviews) : null), [filteredReviews]);
   const tips = useMemo(() => (profile ? buildTips(profile, filtered, summary) : []), [profile, filtered, summary]);
-  const accuracy = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of reviews.values()) {
-      if (r.moves.length) map.set(r.gameId, Math.round(r.moves.reduce((a, m) => a + m.accuracy, 0) / r.moves.length));
-    }
-    return map;
-  }, [reviews]);
   const timeClasses = useMemo(() => [...new Set(games.map((g) => g.timeClass).filter(Boolean))] as TimeClass[], [games]);
 
   useEffect(() => onTraits(profile?.traits ?? null), [profile, onTraits]);
@@ -229,7 +222,7 @@ export function MyGames({ engine, onOpenGame, onOpenLegend, onTraits }: Props) {
 
           <section>
             <h2>Games</h2>
-            <GameList games={filtered} onOpen={onOpenGame} accuracy={accuracy} />
+            <GameList games={filtered} onOpen={onOpenGame} />
           </section>
         </>
       )}
