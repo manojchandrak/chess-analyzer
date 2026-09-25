@@ -1,4 +1,6 @@
+import { Chess } from "chess.js";
 import { classifyMove, moveAccuracy, toCentipawns, winPercent, type MoveQuality } from "./accuracy";
+import { CLASS_ORDER, classifyMoves, type MoveClass } from "./classify";
 import type { EngineEval, StockfishEngine } from "./engine";
 import { nonPawnMaterial } from "./material";
 import type { ParsedGame, ParsedMove } from "./pgn";
@@ -13,6 +15,10 @@ export interface MoveAnalysis extends ParsedMove {
   phase: Phase;
   /** Position eval after this move, from White's perspective (for charting). */
   evalAfterWhite: number;
+  /** Chess.com-style classification. */
+  cls: MoveClass;
+  /** The engine's preferred move in this position (SAN), when it differs from the one played. */
+  bestSan: string | null;
 }
 
 export interface PhaseStats {
@@ -32,6 +38,7 @@ export interface PlayerStats {
   opening: PhaseStats;
   middlegame: PhaseStats;
   endgame: PhaseStats;
+  classCounts: Record<MoveClass, number>;
 }
 
 export interface AnalysisResult {
@@ -72,6 +79,7 @@ function statsFor(name: string, pgnElo: number | null, moves: MoveAnalysis[]): P
     opening: aggregate(moves.filter((m) => m.phase === "opening")),
     middlegame: aggregate(moves.filter((m) => m.phase === "middlegame")),
     endgame: aggregate(moves.filter((m) => m.phase === "endgame")),
+    classCounts: Object.fromEntries(CLASS_ORDER.map((c) => [c, moves.filter((m) => m.cls === c).length])) as Record<MoveClass, number>,
   };
 }
 
@@ -82,15 +90,16 @@ export async function analyzeGame(
   engine: StockfishEngine,
   depth: number,
   onProgress?: (done: number, total: number) => void,
+  opts: AnalyzeOptions & { multiPv?: 1 | 2 } = {},
 ): Promise<AnalysisResult> {
   const fens = [game.moves[0]?.fenBefore ?? standardStartFen(), ...game.moves.map((m) => m.fenAfter)];
 
   const evals: EngineEval[] = [];
   for (let i = 0; i < fens.length; i++) {
-    evals.push(await engine.evaluate(fens[i], depth));
+    evals.push(await engine.evaluate(fens[i], depth, { multiPv: opts.multiPv }));
     onProgress?.(i + 1, fens.length);
   }
-  return analyzeWithEvals(game, evals);
+  return analyzeWithEvals(game, evals, opts);
 }
 
 /** Converts Lichess server analysis (White's perspective, one eval after each
@@ -113,7 +122,12 @@ export function evalsFromWhitePerspective(game: ParsedGame, whiteEvals: { cp: nu
 
 /** Per-move centipawn loss, accuracy and phase from one eval per position
  * (side-to-move perspective; evals[0] is the position before the first move). */
-export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[]): AnalysisResult {
+export interface AnalyzeOptions {
+  /** Plies that are known opening theory (Lichess reports this per game). */
+  bookPlies?: number;
+}
+
+export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[], opts: AnalyzeOptions = {}): AnalysisResult {
   const openingEndPly = Math.min(20, game.moves.length);
   let endgameStartPly: number | null = null;
   for (const move of game.moves) {
@@ -124,12 +138,16 @@ export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[]): Analysi
     }
   }
 
+  const classes = classifyMoves(game.moves, evals, opts.bookPlies ?? 0);
   const moves: MoveAnalysis[] = game.moves.map((move, i) => {
     const mover = move.color;
     const scoreBeforeMover = toCentipawns(evals[i]);
     const scoreAfterOpponent = toCentipawns(evals[i + 1]);
     const scoreAfterMover = -scoreAfterOpponent;
-    const cpLoss = Math.max(0, Math.round(scoreBeforeMover - scoreAfterMover));
+    // Like Lichess, evals are capped at ±1000 for centipawn loss so a single slide
+    // into a forced mate doesn't swamp the average.
+    const cap = (v: number) => Math.max(-1000, Math.min(1000, v));
+    const cpLoss = Math.max(0, Math.round(cap(scoreBeforeMover) - cap(scoreAfterMover)));
 
     const winBefore = winPercent(scoreBeforeMover);
     const winAfter = winPercent(scoreAfterMover);
@@ -140,7 +158,10 @@ export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[]): Analysi
 
     const evalAfterWhite = mover === "w" ? scoreAfterMover : -scoreAfterMover;
 
-    return { ...move, cpLoss, accuracy, quality: classifyMove(winBefore - winAfter), phase, evalAfterWhite };
+    const cls = classes[i].cls;
+    const best = evals[i].best;
+    const bestSan = best && !["best", "brilliant", "great", "book"].includes(cls) ? sanOf(move.fenBefore, best) : null;
+    return { ...move, cpLoss, accuracy, quality: classifyMove(winBefore - winAfter), phase, evalAfterWhite, cls, bestSan };
   });
 
   const whiteMoves = moves.filter((m) => m.color === "w");
@@ -153,6 +174,14 @@ export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[]): Analysi
     openingEndPly,
     endgameStartPly,
   };
+}
+
+function sanOf(fen: string, uci: string): string | null {
+  try {
+    return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san;
+  } catch {
+    return null;
+  }
 }
 
 // Standard start position, used only if a PGN somehow has zero moves.

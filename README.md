@@ -24,10 +24,24 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 - **Legends**: Morphy, Steinitz, Lasker, Capablanca, Alekhine, Botvinnik, Tal,
   Petrosian, Fischer, Karpov, Kasparov and Carlsen, with style profiles, repertoire,
   a featured famous game each, and a searchable list of ~23,000 games.
-- **Game viewer**: step through any game on a board, with Stockfish analysis,
-  move-quality marks and an evaluation chart. Choose from 7 piece sets and 8
-  board color themes (remembered in your browser).
-- **Analyze a PGN**: paste or drop a PGN for the full single-game analysis.
+- **Game viewer**: step through any game on a board. Switch on Stockfish for a
+  live eval bar and best line for the position on screen. A full review labels
+  every move Chess.com-style (Brilliant !!, Great !, Best, Excellent, Good, Book,
+  Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
+  per-player classification table, accuracy by phase and a clickable evaluation
+  chart. Choose from 7 piece sets and 8 board color themes.
+- **Analyze a game**: pick one of your recent Lichess or Chess.com games for a
+  full review, or paste/drop any PGN. Your own games are reviewed as soon as
+  they open.
+
+Move labels use expected points (win probability) lost by each move: Best is
+Stockfish's top choice; Great is the only good move (the second-best loses
+15%+); Brilliant is a best-or-near-best move that sacrifices material (by
+static exchange on the destination square) without spoiling the position;
+Excellent/Good/Inaccuracy/Mistake/Blunder lose up to 2/5/10/20/more than 20%;
+a Miss fails to punish the opponent's mistake; Book uses the opening length
+Lichess reports. Chess.com's exact rules aren't public, so labels are close
+but won't always match theirs.
 
 ## How style is measured
 

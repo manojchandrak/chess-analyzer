@@ -20,7 +20,7 @@ interface LichessGame {
   status: string;
   players: { white: LichessPlayer; black: LichessPlayer };
   winner?: "white" | "black";
-  opening?: { eco: string; name: string };
+  opening?: { eco: string; name: string; ply?: number };
   moves: string;
   clocks?: number[];
   clock?: { initial: number; increment: number };
@@ -64,6 +64,7 @@ export async function fetchLichessGames(username: string, max: number, onProgres
       event: `Lichess ${g.speed}`,
       eco: g.opening?.eco ?? null,
       opening: g.opening?.name ?? null,
+      openingPly: g.opening?.ply ?? null,
       timeClass: LICHESS_SPEED[g.speed] ?? null,
       termination,
       clockInitial: g.clock?.initial ?? null,

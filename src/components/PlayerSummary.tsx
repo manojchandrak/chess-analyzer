@@ -29,7 +29,7 @@ export function PlayerSummary({ color, stats }: { color: "White" | "Black"; stat
         <span className="accuracy-label">overall accuracy</span>
       </div>
       <p className="quality-counts">
-        {stats.overall.blunders} blunders · {stats.overall.mistakes} mistakes · {stats.overall.inaccuracies} inaccuracies
+        {stats.classCounts.blunder} blunders · {stats.classCounts.mistake + stats.classCounts.miss} mistakes · {stats.classCounts.inaccuracy} inaccuracies
       </p>
     </div>
   );

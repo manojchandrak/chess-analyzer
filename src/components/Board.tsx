@@ -9,11 +9,13 @@ interface Props {
   fen: string;
   flipped?: boolean;
   lastMove?: { from: string; to: string } | null;
+  /** Classification badge drawn on a square (the last move's destination). */
+  badge?: { square: string; symbol: string; color: string; label: string } | null;
 }
 
 /** A static board rendered from a FEN, with the last move highlighted, drawn in
  * the viewer's chosen piece set and board colors. */
-export function Board({ fen, flipped = false, lastMove }: Props) {
+export function Board({ fen, flipped = false, lastMove, badge }: Props) {
   const { pieces, theme } = useBoardPrefs();
   const colors = themeOf(theme);
   const rows = fen.split(" ")[0].split("/");
@@ -41,6 +43,11 @@ export function Board({ fen, flipped = false, lastMove }: Props) {
           <div key={sq.name} className={`sq ${sq.dark ? "sq-dark" : "sq-light"}${highlight ? " sq-last" : ""}`}>
             {i % 8 === 0 && <span className="coord coord-rank">{sq.name[1]}</span>}
             {i >= 56 && <span className="coord coord-file">{sq.name[0]}</span>}
+            {badge && badge.square === sq.name && (
+              <span className="sq-badge" style={{ background: badge.color }} title={badge.label}>
+                {badge.symbol}
+              </span>
+            )}
             {sq.piece &&
               (pieces === "unicode" ? (
                 <span className={`piece ${white ? "piece-w" : "piece-b"}`}>{GLYPH[kind]}</span>

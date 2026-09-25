@@ -12,9 +12,12 @@ interface Props {
   moves: MoveAnalysis[];
   openingEndPly: number;
   endgameStartPly: number | null;
+  /** Highlights this ply and lets clicks jump to a ply. */
+  currentPly?: number;
+  onSelect?: (ply: number) => void;
 }
 
-export function EvalChart({ moves, openingEndPly, endgameStartPly }: Props) {
+export function EvalChart({ moves, openingEndPly, endgameStartPly, currentPly, onSelect }: Props) {
   if (moves.length === 0) return null;
 
   const points = moves.map((m, i) => {
@@ -27,7 +30,19 @@ export function EvalChart({ moves, openingEndPly, endgameStartPly }: Props) {
 
   return (
     <div className="eval-chart">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" height={HEIGHT} preserveAspectRatio="none">
+      <svg
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        width="100%"
+        height={HEIGHT}
+        preserveAspectRatio="none"
+        className={onSelect ? "eval-chart-clickable" : undefined}
+        onClick={(e) => {
+          if (!onSelect) return;
+          const box = e.currentTarget.getBoundingClientRect();
+          const ply = Math.round(((e.clientX - box.left) / box.width) * (moves.length - 1)) + 1;
+          onSelect(Math.max(1, Math.min(moves.length, ply)));
+        }}
+      >
         <line x1={0} y1={HEIGHT / 2} x2={WIDTH} y2={HEIGHT / 2} className="eval-zero-line" />
         {openingEndPly < moves.length && (
           <line x1={plyToX(openingEndPly)} y1={0} x2={plyToX(openingEndPly)} y2={HEIGHT} className="eval-phase-line" />
@@ -36,6 +51,7 @@ export function EvalChart({ moves, openingEndPly, endgameStartPly }: Props) {
           <line x1={plyToX(endgameStartPly)} y1={0} x2={plyToX(endgameStartPly)} y2={HEIGHT} className="eval-phase-line" />
         )}
         <polyline points={points.join(" ")} className="eval-line" />
+        {currentPly !== undefined && currentPly > 0 && <line x1={plyToX(currentPly)} y1={0} x2={plyToX(currentPly)} y2={HEIGHT} className="eval-current-line" />}
       </svg>
       <div className="eval-chart-labels">
         <span>White ahead ▲</span>

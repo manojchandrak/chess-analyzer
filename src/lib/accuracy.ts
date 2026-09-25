@@ -36,3 +36,10 @@ export function classifyMove(winPercentDrop: number): MoveQuality {
   if (winPercentDrop < 15) return "mistake";
   return "blunder";
 }
+
+/** "+1.3", "-0.4", "M3" (White's perspective when the inputs are). */
+export function formatScore(cp: number | null, mate: number | null): string {
+  if (mate !== null) return mate === 0 ? "#" : `M${Math.abs(mate)}`;
+  const v = (cp ?? 0) / 100;
+  return `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
+}

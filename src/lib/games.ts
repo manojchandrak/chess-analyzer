@@ -22,6 +22,8 @@ export interface GameRecord {
   eco: string | null;
   /** Detailed opening name when the site provides one. */
   opening: string | null;
+  /** How many plies are named opening theory (Lichess reports this). */
+  openingPly?: number | null;
   timeClass: TimeClass | null;
   termination: Termination | null;
   /** Starting clock in seconds, when known. */
