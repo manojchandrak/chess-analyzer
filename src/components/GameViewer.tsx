@@ -97,19 +97,12 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
     return () => clearTimeout(t);
   }, [playing, ply, game]);
 
-  // Read each newly shown move aloud (with its label when notable, and the
-  // opening name when a new one is reached).
+  // Read each newly shown move aloud (just the move).
   useEffect(() => {
     if (!speak || ply === spokenPly.current) return;
     spokenPly.current = ply;
-    if (!current) return;
-    const parts = [sanToSpeech(current.san)];
-    const cls = analysis?.moves[ply - 1]?.cls;
-    if (cls && ["brilliant", "great", "miss", "mistake", "blunder"].includes(cls)) parts.push(`${CLASS_META[cls].label}!`);
-    const prevOpening = openings?.perPly[ply - 1];
-    if (opening && opening.name !== prevOpening?.name) parts.push(opening.name.replace(/:/g, ","));
-    say(parts.join(". "));
-  }, [ply, speak, current, analysis, opening, openings]);
+    if (current) say(sanToSpeech(current.san));
+  }, [ply, speak, current]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
