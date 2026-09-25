@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { StockfishEngine } from "../lib/engine";
 import type { GameRecord, TimeClass } from "../lib/games";
 import { loadLegendIndex } from "../lib/legendData";
@@ -42,16 +42,17 @@ export function MyGames({ engine, onOpenGame, onOpenLegend, onTraits }: Props) {
   const [reviews, setReviews] = useState<Map<string, GameReview>>(new Map());
   const [reviewCount, setReviewCount] = useState(10);
   const [reviewProgress, setReviewProgress] = useState<{ game: number; of: number; done: number; total: number } | null>(null);
+  // Style features per game id, computed once per load (in batches for big loads).
+  const [featureMap, setFeatureMap] = useState<Map<string, GameFeatures | null>>(new Map());
+  const loadGen = useRef(0);
+  const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     loadLegendIndex().then(setLegends, () => setLegends([]));
   }, []);
 
   const filtered = useMemo(() => games.filter((g) => timeClass === "all" || g.timeClass === timeClass), [games, timeClass]);
-  const features = useMemo(
-    () => filtered.map((g) => (g.playerColor ? extractFeatures(g, g.playerColor) : null)).filter((f): f is GameFeatures => f !== null),
-    [filtered],
-  );
+  const features = useMemo(() => filtered.map((g) => featureMap.get(g.id)).filter((f): f is GameFeatures => !!f), [filtered, featureMap]);
   const profile = useMemo(() => (features.length ? buildProfile(features) : null), [features]);
   const closest = useMemo(
     () => (profile ? legends.map((l) => ({ legend: l, score: similarity(profile.traits, l.profile.traits) })).sort((a, b) => b.score - a.score) : []),
@@ -74,31 +75,61 @@ export function MyGames({ engine, onOpenGame, onOpenLegend, onTraits }: Props) {
     } catch {
       // not remembered; fine
     }
+    const gen = ++loadGen.current;
+    const controller = new AbortController();
+    abort.current = controller;
     setLoading(true);
     setErrors([]);
     setMessages([]);
     setReviews(new Map());
+    setFeatureMap(new Map());
     const log = (m: string) => setMessages((ms) => [...ms.filter((x) => !x.startsWith(m.split(":")[0])), m]);
-    const results = await Promise.allSettled([lichess ? fetchLichessGames(lichess, count, log) : Promise.resolve([]), chesscom ? fetchChessComGames(chesscom, count, log) : Promise.resolve([])]);
+    const max = count || Infinity;
+    const results = await Promise.allSettled([
+      lichess ? fetchLichessGames(lichess, max, log, controller.signal) : Promise.resolve([]),
+      chesscom ? fetchChessComGames(chesscom, max, log, controller.signal) : Promise.resolve([]),
+    ]);
+    if (gen !== loadGen.current) return;
     const loaded: GameRecord[] = [];
     const errs: string[] = [];
     for (const r of results) {
       if (r.status === "fulfilled") loaded.push(...r.value);
-      else errs.push(r.reason instanceof Error ? r.reason.message : String(r.reason));
+      else if (!controller.signal.aborted) errs.push(r.reason instanceof Error ? r.reason.message : String(r.reason));
     }
     loaded.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     setGames(loaded);
     setErrors(errs);
     setTimeClass("all");
     setLoading(false);
+    abort.current = null;
+
+    // Read every game's moves for the style profile, yielding between batches
+    // so thousands of games don't freeze the page.
+    const yieldToPage = () => new Promise((r) => setTimeout(r, 0));
+    const fm = new Map<string, GameFeatures | null>();
+    for (let i = 0; i < loaded.length; i += 300) {
+      for (const g of loaded.slice(i, i + 300)) fm.set(g.id, g.playerColor ? extractFeatures(g, g.playerColor) : null);
+      if (loaded.length > 300) log(`Style: read ${Math.min(i + 300, loaded.length).toLocaleString()} of ${loaded.length.toLocaleString()} games…`);
+      await yieldToPage();
+      if (gen !== loadGen.current) return;
+    }
+    setFeatureMap(fm);
+    if (loaded.length > 300) log(`Style: profile built from ${loaded.length.toLocaleString()} games.`);
 
     // Lichess games the site already analyzed are reviewed instantly, no engine needed.
+    const analyzed = loaded.filter((x) => x.evals);
     const instant = new Map<string, GameReview>();
-    for (const g of loaded.filter((x) => x.evals)) {
+    for (const [i, g] of analyzed.entries()) {
       const r = await reviewGame(g, engine, 0);
       if (r) instant.set(g.id, r);
+      if (i % 25 === 24) {
+        if (analyzed.length > 50) log(`Review: ${(i + 1).toLocaleString()} of ${analyzed.length.toLocaleString()} Lichess-analyzed games…`);
+        await yieldToPage();
+        if (gen !== loadGen.current) return;
+      }
     }
     setReviews(instant);
+    if (analyzed.length > 50) log(`Review: ${analyzed.length.toLocaleString()} Lichess-analyzed games included.`);
   }
 
   async function runReview() {
@@ -132,11 +163,18 @@ export function MyGames({ engine, onOpenGame, onOpenLegend, onTraits }: Props) {
             <option value={100}>100</option>
             <option value={200}>200</option>
             <option value={500}>500</option>
+            <option value={0}>All games</option>
           </select>
         </div>
         <button className="btn btn-primary" disabled={loading || (!names.lichess.trim() && !names.chesscom.trim())}>
           {loading ? "Loading…" : "Load my games"}
         </button>
+        {loading && (
+          <button type="button" className="btn btn-ghost" onClick={() => abort.current?.abort()}>
+            Stop and use what's loaded
+          </button>
+        )}
+        {count === 0 && !loading && <p className="muted small load-hint">Loading every game can take a while for big accounts: Lichess sends roughly 10–20 games a second (Chess.com is much faster). You can stop at any point and keep what has loaded.</p>}
       </form>
 
       {(loading || messages.length > 0) && (

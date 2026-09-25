@@ -45,8 +45,22 @@ export function statsFromAnalysis(analysis: AnalysisResult, color: "w" | "b"): G
   };
 }
 
+let pending: Map<string, GameStats> | null = null;
+
+/** Records a game's stats. Updates are batched (a review of thousands of games
+ * saves and redraws a few times a second, not once per game). */
 export function setGameStats(gameId: string, value: GameStats): void {
-  stats = new Map(stats).set(gameId, value);
+  if (!pending) {
+    pending = new Map();
+    setTimeout(flush, 250);
+  }
+  pending.set(gameId, value);
+}
+
+function flush(): void {
+  if (!pending) return;
+  stats = new Map([...stats, ...pending]);
+  pending = null;
   try {
     localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(stats)));
   } catch {

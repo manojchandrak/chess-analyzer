@@ -31,51 +31,75 @@ interface LichessGame {
 const LICHESS_TERMINATION: Record<string, Termination> = { mate: "mate", resign: "resign", outoftime: "timeout", draw: "draw", stalemate: "draw" };
 const LICHESS_SPEED: Record<string, TimeClass> = { ultraBullet: "bullet", bullet: "bullet", blitz: "blitz", rapid: "rapid", classical: "classical", correspondence: "daily" };
 
-export async function fetchLichessGames(username: string, max: number, onProgress?: Progress): Promise<GameRecord[]> {
+/** Turns one Lichess NDJSON game into a record (null for variants, aborted games…). */
+function lichessRecord(g: LichessGame, user: string): GameRecord | null {
+  if (g.variant !== "standard" || g.initialFen || !g.moves) return null;
+  if (["aborted", "noStart", "unknownFinish"].includes(g.status)) return null;
+  const termination = LICHESS_TERMINATION[g.status] ?? "other";
+  const result = g.winner === "white" ? "1-0" : g.winner === "black" ? "0-1" : "1/2-1/2";
+  const white = g.players.white.user?.name ?? (g.players.white.aiLevel ? `Stockfish level ${g.players.white.aiLevel}` : "Anonymous");
+  const black = g.players.black.user?.name ?? (g.players.black.aiLevel ? `Stockfish level ${g.players.black.aiLevel}` : "Anonymous");
+  return {
+    id: `lichess:${g.id}`,
+    source: "lichess",
+    url: `https://lichess.org/${g.id}`,
+    white,
+    black,
+    whiteElo: g.players.white.rating ?? null,
+    blackElo: g.players.black.rating ?? null,
+    result,
+    date: new Date(g.createdAt).toISOString().slice(0, 10),
+    event: `Lichess ${g.speed}`,
+    eco: g.opening?.eco ?? null,
+    opening: g.opening?.name ?? null,
+    openingPly: g.opening?.ply ?? null,
+    timeClass: LICHESS_SPEED[g.speed] ?? null,
+    termination,
+    clockInitial: g.clock?.initial ?? null,
+    clocks: g.clocks ? g.clocks.map((c) => c / 100) : null,
+    evals: g.analysis ? g.analysis.map((a) => ({ cp: a.eval ?? null, mate: a.mate ?? null })) : null,
+    moves: g.moves,
+    playerColor: white.toLowerCase() === user.toLowerCase() ? "w" : black.toLowerCase() === user.toLowerCase() ? "b" : null,
+  };
+}
+
+/** A player's games, newest first. `max` = Infinity loads every game (Lichess
+ * streams roughly 10-20 games a second, so big accounts take minutes). */
+export async function fetchLichessGames(username: string, max: number, onProgress?: Progress, signal?: AbortSignal): Promise<GameRecord[]> {
   const user = username.trim();
-  const params = new URLSearchParams({ max: String(max), moves: "true", opening: "true", clocks: "true", evals: "true", perfType: "ultraBullet,bullet,blitz,rapid,classical,correspondence" });
-  onProgress?.(`Lichess: requesting ${user}'s last ${max} games…`);
-  const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(user)}?${params}`, { headers: { Accept: "application/x-ndjson" } });
+  const params = new URLSearchParams({ moves: "true", opening: "true", clocks: "true", evals: "true", perfType: "ultraBullet,bullet,blitz,rapid,classical,correspondence" });
+  if (Number.isFinite(max)) params.set("max", String(max));
+  onProgress?.(`Lichess: requesting ${Number.isFinite(max) ? `${user}'s last ${max}` : `all of ${user}'s`} games…`);
+  const res = await fetch(`https://lichess.org/api/games/user/${encodeURIComponent(user)}?${params}`, { headers: { Accept: "application/x-ndjson" }, signal });
   if (res.status === 404) throw new Error(`Lichess user "${user}" not found.`);
   if (res.status === 429) throw new Error("Lichess is rate-limiting requests right now. Wait a minute and try again.");
-  if (!res.ok) throw new Error(`Lichess returned HTTP ${res.status}.`);
+  if (!res.ok || !res.body) throw new Error(`Lichess returned HTTP ${res.status}.`);
 
+  // Read the stream as it arrives so progress can be shown for long exports.
   const games: GameRecord[] = [];
-  const text = await res.text();
-  for (const line of text.split("\n")) {
-    if (!line.trim()) continue;
-    const g = JSON.parse(line) as LichessGame;
-    if (g.variant !== "standard" || g.initialFen || !g.moves) continue;
-    const termination = LICHESS_TERMINATION[g.status] ?? "other";
-    if (["aborted", "noStart", "unknownFinish"].includes(g.status)) continue;
-    const result = g.winner === "white" ? "1-0" : g.winner === "black" ? "0-1" : "1/2-1/2";
-    const white = g.players.white.user?.name ?? (g.players.white.aiLevel ? `Stockfish level ${g.players.white.aiLevel}` : "Anonymous");
-    const black = g.players.black.user?.name ?? (g.players.black.aiLevel ? `Stockfish level ${g.players.black.aiLevel}` : "Anonymous");
-    games.push({
-      id: `lichess:${g.id}`,
-      source: "lichess",
-      url: `https://lichess.org/${g.id}`,
-      white,
-      black,
-      whiteElo: g.players.white.rating ?? null,
-      blackElo: g.players.black.rating ?? null,
-      result,
-      date: new Date(g.createdAt).toISOString().slice(0, 10),
-      event: `Lichess ${g.speed}`,
-      eco: g.opening?.eco ?? null,
-      opening: g.opening?.name ?? null,
-      openingPly: g.opening?.ply ?? null,
-      timeClass: LICHESS_SPEED[g.speed] ?? null,
-      termination,
-      clockInitial: g.clock?.initial ?? null,
-      clocks: g.clocks ? g.clocks.map((c) => c / 100) : null,
-      evals: g.analysis ? g.analysis.map((a) => ({ cp: a.eval ?? null, mate: a.mate ?? null })) : null,
-      moves: g.moves,
-      playerColor: white.toLowerCase() === user.toLowerCase() ? "w" : black.toLowerCase() === user.toLowerCase() ? "b" : null,
-    });
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    let chunk: ReadableStreamReadResult<string>;
+    try {
+      chunk = await reader.read();
+    } catch (e) {
+      if (signal?.aborted) break; // cancelled: keep what arrived
+      throw e;
+    }
+    const { value, done } = chunk;
+    if (value) buffer += value;
+    const lines = buffer.split("\n");
+    buffer = done ? "" : (lines.pop() ?? "");
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const record = lichessRecord(JSON.parse(line) as LichessGame, user);
+      if (record && games.length < max) games.push(record);
+    }
+    if (!Number.isFinite(max)) onProgress?.(`Lichess: ${games.length.toLocaleString()} games so far…`);
+    if (done) break;
   }
-  games.splice(max);
-  onProgress?.(`Lichess: ${games.length} games loaded.`);
+  onProgress?.(`Lichess: ${games.length.toLocaleString()} games loaded.`);
   return games;
 }
 
@@ -116,19 +140,31 @@ function chessComOpening(ecoUrl: string | undefined): string | null {
   return words.join(" ") || null;
 }
 
-export async function fetchChessComGames(username: string, max: number, onProgress?: Progress): Promise<GameRecord[]> {
+export async function fetchChessComGames(username: string, max: number, onProgress?: Progress, signal?: AbortSignal): Promise<GameRecord[]> {
   const user = username.trim().toLowerCase();
   onProgress?.(`Chess.com: finding ${user}'s monthly archives…`);
-  const res = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`);
+  const res = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`, { signal });
   if (res.status === 404) throw new Error(`Chess.com user "${username.trim()}" not found.`);
   if (!res.ok) throw new Error(`Chess.com returned HTTP ${res.status}.`);
   const { archives } = (await res.json()) as { archives: string[] };
 
   const games: GameRecord[] = [];
-  for (const archive of [...archives].reverse()) {
+  const months = [...archives].reverse();
+  for (const [i, archive] of months.entries()) {
     if (games.length >= max) break;
-    onProgress?.(`Chess.com: reading ${archive.split("/").slice(-2).join("-")} (${games.length}/${max} games so far)…`);
-    const month = await fetch(archive);
+    const when = archive.split("/").slice(-2).join("-");
+    onProgress?.(
+      Number.isFinite(max)
+        ? `Chess.com: reading ${when} (${games.length}/${max} games so far)…`
+        : `Chess.com: reading ${when}, month ${i + 1} of ${months.length} (${games.length.toLocaleString()} games so far)…`,
+    );
+    let month: Response;
+    try {
+      month = await fetch(archive, { signal });
+    } catch (e) {
+      if (signal?.aborted) break; // cancelled: keep the months already read
+      throw e;
+    }
     if (!month.ok) continue;
     const { games: monthGames } = (await month.json()) as { games: ChessComGame[] };
     for (const g of [...monthGames].reverse()) {
@@ -162,6 +198,6 @@ export async function fetchChessComGames(username: string, max: number, onProgre
       });
     }
   }
-  onProgress?.(`Chess.com: ${games.length} games loaded.`);
+  onProgress?.(`Chess.com: ${games.length.toLocaleString()} games loaded.`);
   return games;
 }

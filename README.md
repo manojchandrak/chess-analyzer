@@ -11,6 +11,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 
 - **My games**: enter a Lichess and/or Chess.com username. Recent games load
   straight from each site's public API (no login, nothing sent anywhere else).
+  Load 50–500 recent games per site, or **all games** (streamed with a live
+  count; stop at any time and keep what has loaded).
   - **Playing style**: five traits (aggression, sacrificial risk, endgame
     appetite, solidity, simplification) measured from the moves themselves,
     an overall archetype, and the legends whose style is closest to yours.
