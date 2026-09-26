@@ -1,10 +1,12 @@
 import { Chess, type Move } from "chess.js";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
 import type { Drill, LineDrill, PositionDrill } from "../lib/drillData";
 import { bareKingWin, DRILL_DEPTH, judgeMove, recordResult, solutionMove, type Result } from "../lib/drills";
 import { getDrillEngine, type EngineEval } from "../lib/engine";
 import { loadOpenings, type OpeningName } from "../lib/openings";
 import { openingKey } from "../lib/openingKey";
+import { sanToSpeech, say, speechSupported, stopSpeaking } from "../lib/speech";
 import { Board } from "./Board";
 import { BoardSettings } from "./BoardSettings";
 
@@ -50,6 +52,9 @@ export function DrillSession({ drill, onBack, onNext, onRetry }: Props) {
   const before = useRef<EngineEval | null>(null);
   // Bumped on restart/unmount so stale engine replies are ignored.
   const session = useRef(0);
+  const { speak } = useBoardPrefs();
+  // How many moves have been read aloud; a taken-back move isn't re-read.
+  const spoken = useRef(0);
 
   const sync = useCallback((move?: Move) => {
     const c = chess.current;
@@ -132,6 +137,14 @@ export function DrillSession({ drill, onBack, onNext, onRetry }: Props) {
       ref.current++;
     };
   }, [drill, opponentMoves, playLineReply, prepareTurn]);
+
+  // Read each new move aloud (yours and the opponent's), like the game viewer.
+  useEffect(() => {
+    if (speak && played.length > spoken.current) say(sanToSpeech(played[played.length - 1]));
+    spoken.current = played.length;
+  }, [played, speak]);
+
+  useEffect(() => () => stopSpeaking(), []);
 
   // Name the opening as the line is played.
   useEffect(() => {
@@ -348,7 +361,21 @@ export function DrillSession({ drill, onBack, onNext, onRetry }: Props) {
             <span className="muted small">
               {drill.kind === "line" ? "Moves" : drill.goal === "mate" || drill.goal === "promote" ? "Moves used" : "Moves"}: {done} / {total}
             </span>
-            <span className="muted small">
+            <span className="muted small drill-meter-right">
+              {speechSupported() && (
+                <button
+                  className={`btn btn-ghost drill-speak${speak ? " btn-on" : ""}`}
+                  onClick={() => {
+                    if (speak) stopSpeaking();
+                    setBoardPrefs({ speak: !speak });
+                  }}
+                  aria-pressed={speak}
+                  aria-label="Read moves aloud"
+                  title={speak ? "Stop reading moves aloud" : "Read moves aloud"}
+                >
+                  {speak ? "🔊" : "🔈"}
+                </button>
+              )}
               {mistakes > 0 && `${mistakes} miss${mistakes > 1 ? "es" : ""}`}
               {helped && `${mistakes > 0 ? " · " : ""}hint used`}
             </span>
