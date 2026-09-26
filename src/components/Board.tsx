@@ -19,11 +19,19 @@ interface Props {
   lastMove?: { from: string; to: string } | null;
   /** Classification badge drawn on a square (the last move's destination). */
   badge?: { square: string; symbol: string; color: string; label: string } | null;
+  /** Makes the board playable: called with the square that was clicked. */
+  onSquareClick?: (square: string) => void;
+  /** The square of the piece picked up for a move. */
+  selected?: string | null;
+  /** Squares the picked-up piece can move to. */
+  targets?: string[];
+  /** Squares to draw attention to (a hint). */
+  hints?: string[];
 }
 
-/** A static board rendered from a FEN, with the last move highlighted, drawn in
- * the viewer's chosen piece set and board colors. */
-export function Board({ fen, flipped = false, lastMove, badge }: Props) {
+/** A board rendered from a FEN, with the last move highlighted, drawn in the
+ * viewer's chosen piece set and board colors. Static unless `onSquareClick` is set. */
+export function Board({ fen, flipped = false, lastMove, badge, onSquareClick, selected, targets, hints }: Props) {
   const { pieces, theme } = useBoardPrefs();
   useEffect(() => preload(pieces), [pieces]);
   const colors = themeOf(theme);
@@ -43,13 +51,20 @@ export function Board({ fen, flipped = false, lastMove, badge }: Props) {
   const ordered = flipped ? [...squares].reverse() : squares;
 
   return (
-    <div className="board" role="img" aria-label={`Chess position ${fen}`} style={{ "--sq-light": colors.light, "--sq-dark": colors.dark } as CSSProperties}>
+    <div className={`board${onSquareClick ? " board-play" : ""}`} role={onSquareClick ? "grid" : "img"} aria-label={`Chess position ${fen}`} style={{ "--sq-light": colors.light, "--sq-dark": colors.dark } as CSSProperties}>
       {ordered.map((sq, i) => {
         const highlight = lastMove && (sq.name === lastMove.from || sq.name === lastMove.to);
         const white = sq.piece !== null && sq.piece === sq.piece.toUpperCase();
         const kind = sq.piece?.toLowerCase() ?? "";
+        const state = `${sq.name === selected ? " sq-selected" : ""}${targets?.includes(sq.name) ? (sq.piece ? " sq-capture" : " sq-target") : ""}${hints?.includes(sq.name) ? " sq-hint" : ""}`;
         return (
-          <div key={sq.name} className={`sq ${sq.dark ? "sq-dark" : "sq-light"}${highlight ? " sq-last" : ""}`}>
+          <div
+            key={sq.name}
+            className={`sq ${sq.dark ? "sq-dark" : "sq-light"}${highlight ? " sq-last" : ""}${state}`}
+            onClick={onSquareClick ? () => onSquareClick(sq.name) : undefined}
+            role={onSquareClick ? "gridcell" : undefined}
+            aria-label={onSquareClick ? `${sq.name}${sq.piece ? ` ${white ? "white" : "black"} ${NAME[kind]}` : ""}` : undefined}
+          >
             {i % 8 === 0 && <span className="coord coord-rank">{sq.name[1]}</span>}
             {i >= 56 && <span className="coord coord-file">{sq.name[0]}</span>}
             {badge && badge.square === sq.name && (
