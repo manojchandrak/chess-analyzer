@@ -2,8 +2,9 @@
 
 Load your games from Lichess and Chess.com to see your playing style and
 where you can improve, compare yourself with 12 legendary players, and study
-their games, or upload any PGN for a Stockfish breakdown of accuracy by
-opening/middlegame/endgame. Everything runs in your browser.
+their games, upload any PGN for a Stockfish breakdown of accuracy by
+opening/middlegame/endgame, or train each phase with drills. Everything runs
+in your browser.
 
 Live at: https://manojchandrak.github.io/chess-analyzer/
 
@@ -42,6 +43,19 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   strongest opponent, date or length. Every review, wherever it runs, records
   these numbers in your browser; legends' lists have a "Review next 10 games"
   button to rank more of them.
+- **Drills**: learn the three phases of the game by playing on the board.
+  - **Openings**: play the main line of 11 openings (5 as White, 6 as Black)
+    from memory; the other side's moves are played for you, the opening is named
+    as you go, and notes explain the idea behind key moves.
+  - **Middlegame**: tactical patterns (back-rank, Arabian, Anastasia's and
+    smothered mates, forks, pins, skewers, discovered checks, deflection).
+  - **Endgame**: queen and rook mates, king-and-pawn technique (opposition,
+    rule of the square, breakthrough), and the Lucena and Philidor positions.
+  - Stockfish defends and grades every move: a move that spoils the position
+    is taken back so you can try again. Hints and "Show move" help when stuck.
+  - Spaced repetition: clean solves come back after 1, 3, 7, 16 and 35 days,
+    misses come back sooner, and each phase shows how many drills you've
+    mastered. Progress is saved in your browser.
 - **Analyze a game**: pick one of your recent Lichess or Chess.com games for a
   full review, or paste/drop any PGN. Your own games are reviewed as soon as
   they open.
@@ -100,6 +114,16 @@ Download `a.tsv`–`e.tsv` into `data-source/openings/` and run:
 
 ```bash
 node scripts/build-openings.ts
+```
+
+## Drills data
+
+Drills live in `src/lib/drillData.ts`. After adding or changing one, check that
+every opening line is legal and every position can be solved the way the app
+grades it (the bundled Stockfish plays it through):
+
+```bash
+node scripts/check-drills.ts
 ```
 
 ## Development
