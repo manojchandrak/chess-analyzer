@@ -43,7 +43,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   strongest opponent, date or length. Every review, wherever it runs, records
   these numbers in your browser; legends' lists have a "Review next 10 games"
   button to rank more of them.
-- **Drills**: learn the three phases of the game by playing on the board.
+- **Drills**: learn the three phases of the game by playing on the board
+  (drag a piece, or tap it and then its destination).
   - **Openings**: play the main line of 11 openings (5 as White, 6 as Black)
     from memory; the other side's moves are played for you, the opening is named
     as you go, and notes explain the idea behind key moves.
