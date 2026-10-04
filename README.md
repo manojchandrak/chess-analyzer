@@ -71,6 +71,12 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 - **Spoken moves and autoplay**: turn on 🔈 to hear each move read aloud
   ("Knight takes E 5, check") in the most natural English voice your device
   offers, or one you pick and test from the Voice menu; ⏯ plays through the game automatically. Uses your browser's built-in speech.
+- **Commentary read aloud**: the 🗣 button reads each move's commentary after the move
+  is shown (the 🔈 button still reads just the move; switch both on to hear the move
+  and then the comment). Moves in the text are read as moves ("Qf6" as "Queen F 6"),
+  evaluations as numbers ("+1.3" as "plus 1 point 3") and opening codes are skipped.
+  It uses the same voice as the moves, and autoplay waits for a comment to finish
+  before it moves on.
 - **Sort games** (yours or a legend's) by most brilliant or great moves,
   accuracy, game performance (estimated rating), fewest/most blunders,
   strongest opponent, date or length. Every review, wherever it runs, records

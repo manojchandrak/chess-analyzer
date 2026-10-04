@@ -80,10 +80,12 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const fen = showBefore && current ? current.fenBefore : current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
   const openings = useMemo(() => (openingDb ? openingsAlong(game.moves, openingDb) : null), [openingDb, game]);
   const opening = openings?.perPly[ply] ?? null;
+  const commentary = useMemo(() => buildCommentary(game, analysis, { openings }), [game, analysis, openings]);
 
   const { live, error: liveError, retry: retryLive } = useLiveEval(engineOn, fen);
-  const { playing, toggle: toggleAutoplay } = useAutoplay(ply, game.moves.length, setPly);
-  const { speak, supported: speechOk, toggle: toggleSpeak } = useSpokenMoves(ply, current?.san ?? null);
+  const { speak, speakCommentary, speaking, supported: speechOk, toggleMoves: toggleSpeak, toggleCommentary: toggleSpeakCommentary } = useSpokenMoves(ply, current?.san ?? null, commentary[ply] ?? null);
+  // While a comment is being read aloud, autoplay waits for it to finish before the next move.
+  const { playing, toggle: toggleAutoplay } = useAutoplay(ply, game.moves.length, setPly, 1600, speakCommentary && speaking);
 
   useEffect(() => {
     loadOpenings().then(setOpeningDb);
@@ -132,7 +134,6 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   }, [game, autoAnalyzeDepth, engine]);
 
   const currentAnalysis = analysis && ply > 0 ? analysis.moves[ply - 1] : null;
-  const commentary = useMemo(() => buildCommentary(game, analysis, { openings }), [game, analysis, openings]);
   const moveLabel = (m: { moveNumber: number; color: "w" | "b"; san: string }) => `${m.moveNumber}${m.color === "w" ? "." : "…"} ${m.san}`;
   const playFrom = (startFen: string, label: string, initialUci?: string[]) => setExplore({ startFen, label, initialUci });
 
@@ -293,6 +294,17 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 title={speak ? "Stop reading moves aloud" : "Read moves aloud"}
               >
                 {speak ? "🔊" : "🔈"}
+              </button>
+            )}
+            {speechOk && (
+              <button
+                className={`btn btn-ghost${speakCommentary ? " btn-on" : ""}`}
+                onClick={toggleSpeakCommentary}
+                aria-pressed={speakCommentary}
+                aria-label="Read commentary aloud"
+                title={speakCommentary ? "Stop reading the commentary aloud" : "Read the commentary aloud, after each move"}
+              >
+                🗣
               </button>
             )}
             <button className={`btn btn-ghost${showArrows ? " btn-on" : ""}`} onClick={() => setShowArrows((s) => !s)} aria-pressed={showArrows} aria-label="Show arrows" title="Arrows for the best move and engine lines">
