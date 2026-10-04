@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pgnDate, pgnHeaders, pgnMoveText, parseElo, splitPgn, type GameRecord } from "../src/lib/games.ts";
-import { FAST_EVENT, LEGENDS, type LegendGameRow, type LegendIndexEntry } from "../src/lib/legends.ts";
+import { FAST_EVENT, LEGENDS, MOVES_CHUNK, type LegendGameRow, type LegendIndexEntry } from "../src/lib/legends.ts";
 import { buildProfile } from "../src/lib/profile.ts";
 import { extractFeatures, type GameFeatures } from "../src/lib/style.ts";
 
@@ -21,6 +21,7 @@ for (const legend of LEGENDS) {
   const file = path.join(SRC, `${legend.name.split(" ").pop()!.normalize("NFD").replace(/[̀-ͯ]/g, "")}.pgn`);
   const text = fs.readFileSync(file, "latin1");
   const rows: LegendGameRow[] = [];
+  const moveTexts: string[] = [];
   const features: { f: GameFeatures; fast: boolean }[] = [];
   let skipped = 0;
 
@@ -61,7 +62,8 @@ for (const legend of LEGENDS) {
     }
     const fast = FAST_EVENT.test(game.event ?? "");
     features.push({ f, fast });
-    rows.push([game.white, game.black, game.result, game.date, game.event, game.eco, game.whiteElo, game.blackElo, game.moves, fast ? 1 : 0, color]);
+    rows.push([game.white, game.black, game.result, game.date, game.event, game.eco, game.whiteElo, game.blackElo, game.moves ? game.moves.split(" ").length : 0, fast ? 1 : 0, color]);
+    moveTexts.push(game.moves);
   }
 
   const classical = features.filter((x) => !x.fast).map((x) => x.f);
@@ -79,7 +81,11 @@ for (const legend of LEGENDS) {
     else console.warn(`  ${legend.name}: famous game "${fam.title}" not found`);
   }
 
+  for (const f of fs.readdirSync(OUT)) if (f.startsWith(`${legend.id}.m`) && f.endsWith(".json")) fs.rmSync(path.join(OUT, f));
   fs.writeFileSync(path.join(OUT, `${legend.id}.json`), JSON.stringify(rows));
+  for (let k = 0; k * MOVES_CHUNK < moveTexts.length; k++) {
+    fs.writeFileSync(path.join(OUT, `${legend.id}.m${k}.json`), JSON.stringify(moveTexts.slice(k * MOVES_CHUNK, (k + 1) * MOVES_CHUNK)));
+  }
   index.push({ id: legend.id, name: legend.name, years: legend.years, title: legend.title, knownFor: legend.knownFor, blurb: legend.blurb, games: rows.length, profileGames: profileGames.length, profileBasis: basis, profile, famous });
   const t = profile.traits;
   console.log(

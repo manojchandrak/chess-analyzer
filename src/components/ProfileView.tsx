@@ -1,3 +1,5 @@
+import type { OpeningAccuracy } from "../lib/openingStats";
+import { openingKey } from "../lib/openingStats";
 import { archetypeOf, TRAIT_LABELS, type NamedTally, type Profile, type TraitKey, type Traits } from "../lib/profile";
 
 interface Props {
@@ -6,12 +8,16 @@ interface Props {
   compare?: { name: string; traits: Traits } | null;
   /** "You" for the user, the legend's name otherwise. */
   subject: string;
+  /** Engine accuracy per opening, from reviewed games, shown next to the results. */
+  openingAccuracy?: Map<string, OpeningAccuracy>;
 }
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
-function TallyTable({ title, rows, limit = 6 }: { title: string; rows: NamedTally[]; limit?: number }) {
+function TallyTable({ title, rows, limit = 6, side, accuracy }: { title: string; rows: NamedTally[]; limit?: number; side?: "w" | "b"; accuracy?: Map<string, OpeningAccuracy> }) {
   if (rows.length === 0) return null;
+  const accOf = (name: string) => (side && accuracy ? accuracy.get(openingKey(side, name)) : undefined);
+  const showAcc = rows.slice(0, limit).some((r) => accOf(r.name));
   return (
     <div className="tally">
       <h4>{title}</h4>
@@ -22,6 +28,7 @@ function TallyTable({ title, rows, limit = 6 }: { title: string; rows: NamedTall
             <th className="num">Games</th>
             <th className="num">W / D / L</th>
             <th className="num">Score</th>
+            {showAcc && <th className="num" title="Engine accuracy in reviewed games with this opening">Acc.</th>}
           </tr>
         </thead>
         <tbody>
@@ -37,6 +44,11 @@ function TallyTable({ title, rows, limit = 6 }: { title: string; rows: NamedTall
                   {r.score}%
                 </span>
               </td>
+              {showAcc && (
+                <td className="num" title={accOf(r.name) ? `${accOf(r.name)!.games} reviewed games` : "not reviewed"}>
+                  {accOf(r.name) ? `${accOf(r.name)!.accuracy}%` : "—"}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -45,7 +57,7 @@ function TallyTable({ title, rows, limit = 6 }: { title: string; rows: NamedTall
   );
 }
 
-export function ProfileView({ profile, compare, subject }: Props) {
+export function ProfileView({ profile, compare, subject, openingAccuracy }: Props) {
   const { results, byColor, metrics: m, traits, repertoire } = profile;
   const archetype = archetypeOf(traits);
   return (
@@ -120,8 +132,8 @@ export function ProfileView({ profile, compare, subject }: Props) {
       <div className="card repertoire">
         <h3>Repertoire</h3>
         <div className="tally-grid">
-          <TallyTable title="As White" rows={repertoire.white} />
-          <TallyTable title="As Black" rows={repertoire.black} />
+          <TallyTable title="As White" rows={repertoire.white} side="w" accuracy={openingAccuracy} />
+          <TallyTable title="As Black" rows={repertoire.black} side="b" accuracy={openingAccuracy} />
           <TallyTable title="First move as White" rows={repertoire.firstMoves} limit={4} />
           <TallyTable title="As Black, facing" rows={repertoire.vsFirstMove} limit={4} />
         </div>

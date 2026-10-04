@@ -12,6 +12,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 
 - **My games**: enter a Lichess and/or Chess.com username. Recent games load
   straight from each site's public API (no login, nothing sent anywhere else).
+  Load 50–500 recent games per site, or **all games** (streamed with a live
+  count; stop at any time and keep what has loaded).
   - **Playing style**: five traits (aggression, sacrificial risk, endgame
     appetite, solidity, simplification) measured from the moves themselves,
     an overall archetype, and the legends whose style is closest to yours.
@@ -21,6 +23,13 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
     already analyzed are used for free) to find your weakest phase, blunders
     that hang pieces, blunders under time pressure, and winning positions you
     didn't convert. Reviews are cached in your browser.
+  - **Progress over time**: accuracy, blunders per game and score by month, from
+    the games you've reviewed, with a short "improving / steady / slipping" summary.
+  - **Practice your mistakes**: a drill built from your own mistakes and blunders.
+    You get the position before the error; click a piece and a square (or type the
+    move) to find the better one. Solved puzzles are remembered in your browser.
+  - **Opening results**: your repertoire table shows engine accuracy per opening
+    next to the results.
   - Filter everything by time control; open any game in the viewer.
 - **Legends**: Morphy, Steinitz, Lasker, Capablanca, Alekhine, Botvinnik, Tal,
   Petrosian, Fischer, Karpov, Kasparov and Carlsen, with style profiles, repertoire,
@@ -31,6 +40,15 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
   per-player classification table, accuracy by phase and a clickable evaluation
   chart. Choose from 7 piece sets and 8 board color themes.
+- **Engine lines and arrows**: with Stockfish on, the viewer shows the top three
+  lines with arrows on the board (click a line to emphasize it), and a green arrow
+  for the move you should have played. **Download PGN** saves the game with
+  evaluations and move annotations; **Open position on Lichess** continues the
+  analysis there.
+- **Shareable links**: the page address always describes what's open. **Copy link**
+  in the viewer gives a link to a Lichess game or a legend's game at the current
+  move (Chess.com games and pasted PGNs can't be reopened from a link). Links also
+  open a tab, a legend or a username (`#/mine?lichess=name`).
 - **Opening names**: the viewer names the opening and variation as you step
   through moves (e.g. "B97 Sicilian Defense: Najdorf Variation, Poisoned Pawn
   Accepted") and shows where the game left theory; the same data marks Book
@@ -84,7 +102,14 @@ bullet games naturally read more aggressive and less endgame-heavy.
 ## How it works
 
 - **Engine**: [Stockfish 19 (lite, single-threaded WASM)](https://github.com/nmrugg/stockfish.js)
-  runs in a Web Worker, right in your browser. Nothing is uploaded anywhere.
+  runs in Web Workers, right in your browser. Nothing is uploaded anywhere. Reviews
+  use a small pool of workers (up to 4, leaving a core free) and evaluate a game's
+  positions in parallel. Every evaluation has a timeout, and a worker that fails to
+  load or crashes is replaced, so a failure shows an error and a Retry button
+  instead of freezing the page. (Multi-threaded Stockfish needs special HTTP
+  headers that GitHub Pages can't send, so parallelism comes from separate workers.)
+- **Storage**: engine reviews are cached in IndexedDB (localStorage's ~5 MB fills up
+  after a few hundred games). If the browser refuses to save, the page says so.
 - **Parsing**: [chess.js](https://github.com/jhlywa/chess.js) parses the PGN and
   replays it move by move to get the FEN before/after every move.
 - **Per-move accuracy**: every position is evaluated once; the resulting
@@ -95,7 +120,8 @@ bullet games naturally read more aggressive and less endgame-heavy.
   middlegame. This is a heuristic, not a precise theoretical boundary.
 - **Estimated rating**: average centipawn loss is mapped to an approximate
   Elo via a calibrated lookup curve (`src/lib/rating.ts`). This is a rough,
-  single-game estimate, not an official rating — treat it as directional.
+  single-game estimate, not an official rating — treat it as directional. Games
+  under 40 moves are labeled low or moderate confidence.
 
 ## Legends data
 
@@ -107,6 +133,10 @@ them, and run:
 ```bash
 node scripts/build-legends.ts
 ```
+
+Each legend gets `<id>.json` (the game list, without moves) and `<id>.m0.json`,
+`<id>.m1.json`, … (move text, 500 games per file). The moves for a game are fetched
+only when it's opened, which keeps the biggest list (Carlsen) under 1 MB.
 
 ## Opening names data
 
@@ -132,8 +162,17 @@ node scripts/check-drills.ts
 
 ```bash
 npm install
-npm run dev
+npm run dev      # local server
+npm test         # unit tests (Vitest)
+npm run lint     # oxlint
 ```
+
+Tests live in `src/lib/__tests__/` and cover the pure logic: move classification,
+accuracy and rating, PGN and game parsing, review summaries, trends, puzzles, link
+routing, the engine pool (against a fake worker) and the data loaders. CI
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, tests and a
+build on every pull request; the deploy workflow runs the same checks before
+publishing.
 
 ## Build
 

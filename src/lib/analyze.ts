@@ -4,7 +4,7 @@ import { CLASS_ORDER, classifyMoves, type MoveClass } from "./classify";
 import type { EngineEval, StockfishEngine } from "./engine";
 import { nonPawnMaterial } from "./material";
 import type { ParsedGame, ParsedMove } from "./pgn";
-import { estimateRating } from "./rating";
+import { estimateRating, ratingConfidence, type RatingConfidence } from "./rating";
 
 export type Phase = "opening" | "middlegame" | "endgame";
 
@@ -34,6 +34,8 @@ export interface PlayerStats {
   name: string;
   pgnElo: number | null;
   estimatedRating: number | null;
+  /** How reliable the estimate is, from how many moves it rests on. */
+  ratingConfidence: RatingConfidence;
   overall: PhaseStats;
   opening: PhaseStats;
   middlegame: PhaseStats;
@@ -75,6 +77,7 @@ function statsFor(name: string, pgnElo: number | null, moves: MoveAnalysis[]): P
     name,
     pgnElo,
     estimatedRating: overall.averageCpLoss !== null ? estimateRating(overall.averageCpLoss) : null,
+    ratingConfidence: ratingConfidence(overall.moveCount),
     overall,
     opening: aggregate(moves.filter((m) => m.phase === "opening")),
     middlegame: aggregate(moves.filter((m) => m.phase === "middlegame")),
@@ -94,11 +97,17 @@ export async function analyzeGame(
 ): Promise<AnalysisResult> {
   const fens = [game.moves[0]?.fenBefore ?? standardStartFen(), ...game.moves.map((m) => m.fenAfter)];
 
-  const evals: EngineEval[] = [];
-  for (let i = 0; i < fens.length; i++) {
-    evals.push(await engine.evaluate(fens[i], depth, { multiPv: opts.multiPv }));
-    onProgress?.(i + 1, fens.length);
-  }
+  // Positions are independent, so hand them all to the engine pool at once; it runs
+  // as many as it has workers and queues the rest.
+  engine.newGame();
+  let done = 0;
+  const evals: EngineEval[] = await Promise.all(
+    fens.map(async (fen) => {
+      const e = await engine.evaluate(fen, depth, { multiPv: opts.multiPv });
+      onProgress?.(++done, fens.length);
+      return e;
+    }),
+  );
   return analyzeWithEvals(game, evals, opts);
 }
 

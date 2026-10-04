@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { themeOf, useBoardPrefs } from "../lib/boardPrefs";
+import { arrowGeometry, describePosition, type BoardArrow } from "../lib/boardText";
 
 const GLYPH: Record<string, string> = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
 const NAME: Record<string, string> = { k: "king", q: "queen", r: "rook", b: "bishop", n: "knight", p: "pawn" };
@@ -19,6 +20,8 @@ interface Props {
   lastMove?: { from: string; to: string } | null;
   /** Classification badge drawn on a square (the last move's destination). */
   badge?: { square: string; symbol: string; color: string; label: string } | null;
+  /** Arrows drawn over the board (best moves, engine lines). */
+  arrows?: BoardArrow[];
   /** Makes the board playable: called with the square that was clicked or
    * tapped. Dragging a piece calls it with the start square, then the drop square. */
   onSquareClick?: (square: string) => void;
@@ -32,7 +35,7 @@ interface Props {
 
 /** A board rendered from a FEN, with the last move highlighted, drawn in the
  * viewer's chosen piece set and board colors. Static unless `onSquareClick` is set. */
-export function Board({ fen, flipped = false, lastMove, badge, onSquareClick, selected, targets, hints }: Props) {
+export function Board({ fen, flipped = false, lastMove, badge, arrows, onSquareClick, selected, targets, hints }: Props) {
   const { pieces, theme } = useBoardPrefs();
   const boardRef = useRef<HTMLDivElement>(null);
   // A piece being dragged: where it came from and the pointer's position on the board.
@@ -112,11 +115,12 @@ export function Board({ fen, flipped = false, lastMove, badge, onSquareClick, se
   };
 
   return (
+    <div className="board-frame">
     <div
       ref={boardRef}
       className={`board${onSquareClick ? " board-play" : ""}`}
       role={onSquareClick ? "grid" : "img"}
-      aria-label={`Chess position ${fen}`}
+      aria-label={describePosition(fen)}
       style={{ "--sq-light": colors.light, "--sq-dark": colors.dark } as CSSProperties}
       onPointerDown={onSquareClick ? onPointerDown : undefined}
       onPointerMove={onSquareClick ? onPointerMove : undefined}
@@ -147,6 +151,21 @@ export function Board({ fen, flipped = false, lastMove, badge, onSquareClick, se
         );
       })}
       {drag?.moved && pieceImage(drag.piece, "piece-drag", { left: drag.x, top: drag.y })}
+    </div>
+    {arrows && arrows.length > 0 && (
+      <svg className="board-arrows" viewBox="0 0 8 8" aria-hidden="true">
+        {arrows.map((a, i) => {
+          const g = arrowGeometry(a, flipped);
+          const color = a.color ?? "#2e7d5b";
+          return (
+            <g key={`${a.from}${a.to}${i}`} opacity={a.opacity ?? 0.85}>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke={color} strokeWidth={0.17} strokeLinecap="round" />
+              <polygon points={g.head} fill={color} />
+            </g>
+          );
+        })}
+      </svg>
+    )}
     </div>
   );
 }

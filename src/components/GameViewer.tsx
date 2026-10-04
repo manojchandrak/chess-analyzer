@@ -1,18 +1,22 @@
-import { Chess } from "chess.js";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAutoplay } from "../hooks/useAutoplay";
+import { useLiveEval } from "../hooks/useLiveEval";
+import { useSpokenMoves } from "../hooks/useSpokenMoves";
 import { formatScore } from "../lib/accuracy";
 import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type AnalysisResult } from "../lib/analyze";
-import { setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
 import { CLASS_META } from "../lib/classify";
-import { getLiveEngine, type LiveInfo, type StockfishEngine } from "../lib/engine";
+import { uciSquares, type BoardArrow } from "../lib/boardText";
+import { EngineError, type StockfishEngine } from "../lib/engine";
 import { setGameStats, statsFromAnalysis } from "../lib/gameStats";
 import { toPgn, type GameRecord } from "../lib/games";
 import { loadOpenings, openingsAlong, type OpeningName } from "../lib/openings";
 import type { ParsedGame } from "../lib/pgn";
-import { sanToSpeech, say, speechSupported, stopSpeaking } from "../lib/speech";
+import { annotatedPgn, downloadText, pgnFilename } from "../lib/pgnExport";
+import { sanSquares } from "../lib/uci";
 import { Board } from "./Board";
 import { BoardSettings } from "./BoardSettings";
 import { ClassificationTable } from "./ClassificationTable";
+import { EngineLines } from "./EngineLines";
 import { EvalBar } from "./EvalBar";
 import { EvalChart } from "./EvalChart";
 import { PhaseTable } from "./PhaseTable";
@@ -33,31 +37,17 @@ interface Props {
   onBack?: () => void;
   /** Run a full Stockfish review at this depth as soon as the game opens. */
   autoAnalyzeDepth?: number;
-}
-
-/** The engine's line as numbered SAN ("12. Nf3 Nc6 13. d4"), converted from UCI. */
-function pvToSan(fen: string, pv: string[], max = 10): string {
-  const chess = new Chess(fen);
-  const parts: string[] = [];
-  for (const uci of pv.slice(0, max)) {
-    const turn = chess.turn();
-    const moveNo = chess.moveNumber();
-    let san: string;
-    try {
-      san = chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san;
-    } catch {
-      break;
-    }
-    parts.push(turn === "w" ? `${moveNo}. ${san}` : parts.length === 0 ? `${moveNo}… ${san}` : san);
-  }
-  return parts.join(" ");
+  /** Move to show first (for shared links), and a callback when the shown move changes. */
+  initialPly?: number;
+  onPlyChange?: (ply: number) => void;
+  /** A link that reopens this game at the current move (Lichess and legend games). */
+  shareUrl?: string | null;
 }
 
 const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
 
-export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth }: Props) {
-  const cacheKey = (d: number) => (record ? `${record.id}:${d}` : null);
-  const [ply, setPly] = useState(0);
+export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth, initialPly, onPlyChange, shareUrl }: Props) {
+  const [ply, setPly] = useState(() => Math.max(0, Math.min(initialPly ?? 0, game.moves.length)));
   const [flipped, setFlipped] = useState(record?.playerColor === "b");
   const [depth, setDepth] = useState(autoAnalyzeDepth ?? 12);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
@@ -68,90 +58,65 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   });
   const [fromStockfish, setFromStockfish] = useState(() => !!(record && analysisCache.has(`${record.id}:${autoAnalyzeDepth ?? 12}`)));
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [engineOn, setEngineOn] = useState(false);
-  const [live, setLive] = useState<LiveInfo | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [showArrows, setShowArrows] = useState(true);
+  const [focusLine, setFocusLine] = useState<{ fen: string; index: number } | null>(null);
+  const [copied, setCopied] = useState<"pgn" | "link" | false>(false);
   const [openingDb, setOpeningDb] = useState<Map<string, OpeningName> | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const { speak } = useBoardPrefs();
-  const spokenPly = useRef(0);
 
   const current = ply > 0 ? game.moves[ply - 1] : null;
   const fen = current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
   const openings = useMemo(() => (openingDb ? openingsAlong(game.moves, openingDb) : null), [openingDb, game]);
   const opening = openings?.perPly[ply] ?? null;
 
+  const { live, error: liveError, retry: retryLive } = useLiveEval(engineOn, fen);
+  const { playing, toggle: toggleAutoplay } = useAutoplay(ply, game.moves.length, setPly);
+  const { speak, supported: speechOk, toggle: toggleSpeak } = useSpokenMoves(ply, current?.san ?? null);
+
   useEffect(() => {
     loadOpenings().then(setOpeningDb);
-    return () => stopSpeaking();
   }, []);
 
-  // Autoplay: step forward every 1.6 s until the end of the game.
-  useEffect(() => {
-    if (!playing) return;
-    if (ply >= game.moves.length) {
-      setPlaying(false);
-      return;
-    }
-    const t = setTimeout(() => setPly((p) => p + 1), 1600);
-    return () => clearTimeout(t);
-  }, [playing, ply, game]);
-
-  // Read each newly shown move aloud (just the move).
-  useEffect(() => {
-    if (!speak || ply === spokenPly.current) return;
-    spokenPly.current = ply;
-    if (current) say(sanToSpeech(current.san));
-  }, [ply, speak, current]);
+  useEffect(() => onPlyChange?.(ply), [ply, onPlyChange]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest("input, textarea, select")) return;
       if (e.key === "ArrowRight") setPly((p) => Math.min(game.moves.length, p + 1));
       if (e.key === "ArrowLeft") setPly((p) => Math.max(0, p - 1));
+      if (e.key === "Home") setPly(0);
+      if (e.key === "End") setPly(game.moves.length);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [game]);
 
-  // Live engine: follows the position on screen while switched on.
-  useEffect(() => {
-    if (!engineOn) return;
-    const live = getLiveEngine();
-    // The engine reports many times a second; redraw at most every 200 ms.
-    let latest: LiveInfo | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    live.onInfo((info) => {
-      latest = info;
-      timer ??= setTimeout(() => {
-        timer = null;
-        setLive(latest);
-      }, 200);
-    });
-    live.analyze(fen);
-    return () => {
-      if (timer) clearTimeout(timer);
-      live.onInfo(null);
-      live.stop();
-    };
-  }, [engineOn, fen]);
-
-  async function runEngine(atDepth = depth) {
-    if (!engine) return;
-    setEngineOn(true);
-    setProgress({ done: 0, total: game.moves.length + 1 });
-    const bookPlies = Math.max(record?.openingPly ?? 0, openingsAlong(game.moves, await loadOpenings()).bookPlies);
-    const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 2, bookPlies });
-    const key = cacheKey(atDepth);
-    if (key) analysisCache.set(key, result);
-    if (record?.playerColor) setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
-    setAnalysis(result);
-    setFromStockfish(true);
-    setProgress(null);
-  }
+  const runEngine = useCallback(
+    async (atDepth: number) => {
+      if (!engine) return;
+      setEngineOn(true);
+      setReviewError(null);
+      setProgress({ done: 0, total: game.moves.length + 1 });
+      try {
+        const bookPlies = Math.max(record?.openingPly ?? 0, openingsAlong(game.moves, await loadOpenings()).bookPlies);
+        const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 2, bookPlies });
+        const key = record ? `${record.id}:${atDepth}` : null;
+        if (key) analysisCache.set(key, result);
+        if (record?.playerColor) setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
+        setAnalysis(result);
+        setFromStockfish(true);
+      } catch (e) {
+        setReviewError(e instanceof EngineError ? e.message : "The review stopped because of an unexpected error.");
+      } finally {
+        setProgress(null);
+      }
+    },
+    [engine, game, record],
+  );
 
   useEffect(() => {
-    if (autoAnalyzeDepth && engine && !fromStockfish) runEngine(autoAnalyzeDepth);
+    if (autoAnalyzeDepth && engine && !fromStockfish) void runEngine(autoAnalyzeDepth);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per opened game
   }, [game, autoAnalyzeDepth, engine]);
 
@@ -179,6 +144,24 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   }
   if (bar && current?.san.includes("#")) bar = { cp: null, mate: null, depth: null, mated: current.color };
 
+  // Arrows: the move the player should have made, and the live engine's top lines.
+  const focus = focusLine && focusLine.fen === fen ? focusLine.index : 0;
+  const arrows = useMemo(() => {
+    if (!showArrows) return [];
+    const out: BoardArrow[] = [];
+    if (current && currentAnalysis?.bestSan) {
+      const sq = sanSquares(current.fenBefore, currentAnalysis.bestSan);
+      if (sq) out.push({ ...sq, color: "#81b64c", opacity: 0.8 });
+    }
+    if (liveHere) {
+      liveHere.lines.slice(0, 3).forEach((line, i) => {
+        const sq = uciSquares(line.pv[0] ?? "");
+        if (sq) out.push({ ...sq, color: i === focus ? "#2f7fc0" : "#7aa6cf", opacity: i === focus ? 0.9 : 0.45 });
+      });
+    }
+    return out;
+  }, [showArrows, current, currentAnalysis, liveHere, focus]);
+
   const pairs = useMemo(() => {
     const out: { no: number; w?: number; b?: number }[] = [];
     game.moves.forEach((m, i) => {
@@ -193,7 +176,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
     const cls = analysis?.moves[i]?.cls;
     const meta = cls ? CLASS_META[cls] : null;
     return (
-      <button className={`mv${ply === i + 1 ? " mv-current" : ""}`} onClick={() => setPly(i + 1)} title={meta?.label}>
+      <button className={`mv${ply === i + 1 ? " mv-current" : ""}`} onClick={() => setPly(i + 1)} title={meta?.label} aria-current={ply === i + 1 ? "step" : undefined}>
         {game.moves[i].san}
         {meta && cls !== "good" && cls !== "excellent" && (
           <span className="mv-class" style={{ color: meta.color }}>
@@ -243,16 +226,19 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
               flipped={flipped}
               lastMove={current ? { from: current.from, to: current.to } : null}
               badge={current && meta ? { square: current.to, symbol: meta.symbol, color: meta.color, label: meta.label } : null}
+              arrows={arrows}
             />
           </div>
-          <div className="viewer-controls">
+          <div className="viewer-controls" role="group" aria-label="Board controls">
             <button className="btn btn-ghost" onClick={() => setPly(0)} aria-label="First move">
               ⏮
             </button>
             <button className="btn btn-ghost" onClick={() => setPly((p) => Math.max(0, p - 1))} aria-label="Previous move">
               ◀
             </button>
-            <span className="ply-label">{current ? `${current.moveNumber}${current.color === "w" ? "." : "…"} ${current.san}` : "Start"}</span>
+            <span className="ply-label" aria-live="polite">
+              {current ? `${current.moveNumber}${current.color === "w" ? "." : "…"} ${current.san}` : "Start"}
+            </span>
             <button className="btn btn-ghost" onClick={() => setPly((p) => Math.min(game.moves.length, p + 1))} aria-label="Next move">
               ▶
             </button>
@@ -264,23 +250,17 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             </button>
             <button
               className={`btn btn-ghost${playing ? " btn-on" : ""}`}
-              onClick={() => {
-                if (!playing && ply >= game.moves.length) setPly(0);
-                setPlaying((p) => !p);
-              }}
+              onClick={() => toggleAutoplay(() => setPly(0))}
               aria-label={playing ? "Pause autoplay" : "Autoplay the game"}
+              aria-pressed={playing}
               title={playing ? "Pause" : "Play through the game"}
             >
               {playing ? "⏸" : "⏯"}
             </button>
-            {speechSupported() && (
+            {speechOk && (
               <button
                 className={`btn btn-ghost${speak ? " btn-on" : ""}`}
-                onClick={() => {
-                  if (speak) stopSpeaking();
-                  spokenPly.current = ply;
-                  setBoardPrefs({ speak: !speak });
-                }}
+                onClick={toggleSpeak}
                 aria-pressed={speak}
                 aria-label="Read moves aloud"
                 title={speak ? "Stop reading moves aloud" : "Read moves aloud"}
@@ -288,28 +268,42 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 {speak ? "🔊" : "🔈"}
               </button>
             )}
+            <button className={`btn btn-ghost${showArrows ? " btn-on" : ""}`} onClick={() => setShowArrows((s) => !s)} aria-pressed={showArrows} aria-label="Show arrows" title="Arrows for the best move and engine lines">
+              ➚
+            </button>
           </div>
           <BoardSettings />
         </div>
 
         <div className="viewer-moves">
-          <div className="engine-panel">
+          <div className="engine-panel engine-panel-col">
             <label className="toggle">
               <input type="checkbox" checked={engineOn} onChange={(e) => setEngineOn(e.target.checked)} />
               <span className="toggle-track" />
               Stockfish
             </label>
-            {engineOn && (
-              <span className={`engine-line${liveHere ? "" : " engine-line-stale"}`}>
+            {engineOn && liveError && (
+              <p className="error-message engine-error">
+                {liveError}
+                <button className="btn btn-ghost" onClick={retryLive}>
+                  Retry
+                </button>
+              </p>
+            )}
+            {engineOn && !liveError && (
+              <div className="engine-lines-slot" aria-live="off">
                 {current?.san.includes("#") ? (
                   <strong>Checkmate</strong>
                 ) : liveShown && liveScore ? (
-                  <>
-                    <strong>{formatScore(liveScore.cp, liveScore.mate)}</strong> <span className="muted small">depth {liveShown.depth}</span> <span className="pv">{pvToSan(liveShown.fen, liveShown.pv)}</span>
-                  </>
+                  <EngineLines info={liveShown} current={!!liveHere} focus={focus} onFocus={(index) => setFocusLine({ fen, index })} />
                 ) : (
                   <span className="muted small">thinking…</span>
                 )}
+              </div>
+            )}
+            {engineOn && !liveError && liveShown && liveScore && (
+              <span className="visually-hidden" aria-live="polite">
+                Engine evaluation {formatScore(liveScore.cp, liveScore.mate)} at depth {liveScore.depth}
               </span>
             )}
           </div>
@@ -355,9 +349,9 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             )}
           </div>
 
-          <div className="move-list">
+          <div className="move-list" role="list" aria-label="Moves">
             {pairs.map((p) => (
-              <div className="move-row" key={p.no}>
+              <div className="move-row" key={p.no} role="listitem">
                 <span className="move-no">{p.no}.</span>
                 {moveButton(p.w)}
                 {moveButton(p.b)}
@@ -372,7 +366,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                   <option value={12}>Depth 12</option>
                   <option value={16}>Depth 16 (slow)</option>
                 </select>
-                <button className="btn btn-primary" onClick={() => runEngine()} disabled={!engine}>
+                <button className="btn btn-primary" onClick={() => void runEngine(depth)} disabled={!engine}>
                   Review with Stockfish
                 </button>
               </>
@@ -383,20 +377,50 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 const pgn = record ? toPgn(record) : game.moves.map((m, i) => (i % 2 === 0 ? `${m.moveNumber}. ${m.san}` : m.san)).join(" ");
                 try {
                   await navigator.clipboard.writeText(pgn);
-                  setCopied(true);
+                  setCopied("pgn");
                   setTimeout(() => setCopied(false), 1500);
                 } catch {
                   setCopied(false);
                 }
               }}
             >
-              {copied ? "Copied" : "Copy PGN"}
+              {copied === "pgn" ? "Copied" : "Copy PGN"}
             </button>
+            <button
+              className="btn btn-ghost"
+              disabled={!shareUrl}
+              title={shareUrl ? "Copy a link to this game at this move" : "Only Lichess games and the legends' games can be shared by link"}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareUrl as string);
+                  setCopied("link");
+                  setTimeout(() => setCopied(false), 1500);
+                } catch {
+                  setCopied(false);
+                }
+              }}
+            >
+              {copied === "link" ? "Link copied" : "Copy link"}
+            </button>
+            <button className="btn btn-ghost" onClick={() => downloadText(pgnFilename(game), annotatedPgn(game, record, analysis))} title={analysis ? "Moves with evaluations and annotations" : "Moves only; run the review first to include evaluations"}>
+              Download PGN
+            </button>
+            <a className="btn btn-ghost" href={`https://lichess.org/analysis/${fen.replace(/ /g, "_")}`} target="_blank" rel="noreferrer">
+              Open position on Lichess
+            </a>
           </div>
         </div>
       </div>
 
       {progress && <ProgressBar done={progress.done} total={progress.total} label="Stockfish review" />}
+      {reviewError && (
+        <p className="error-message engine-error">
+          {reviewError}
+          <button className="btn btn-ghost" onClick={() => void runEngine(depth)}>
+            Try again
+          </button>
+        </p>
+      )}
 
       {analysis && (
         <div className="results">

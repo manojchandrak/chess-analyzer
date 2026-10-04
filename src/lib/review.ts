@@ -2,6 +2,7 @@
 // analysis per game, keeps only the player's own moves, and aggregates where
 // the mistakes happen: by phase, under time pressure, pieces left hanging, and
 // winning positions that weren't converted.
+import { Chess } from "chess.js";
 import type { MoveQuality } from "./accuracy.ts";
 import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type Phase } from "./analyze.ts";
 import type { StockfishEngine } from "./engine.ts";
@@ -10,6 +11,7 @@ import { setGameStats, statsFromAnalysis, type GameStats } from "./gameStats.ts"
 import { scoreFor, type GameRecord } from "./games.ts";
 import { loadOpenings, openingsAlong } from "./openings.ts";
 import { parseRecord } from "./pgn.ts";
+import { purgeLegacyReviews, storeGet, storeSet } from "./store.ts";
 
 const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
@@ -25,6 +27,18 @@ export interface ReviewedMove {
   evalBefore: number;
   /** Value of the piece the opponent captured on the very next move (0 if none). */
   lostNext: number;
+  /** For mistakes and blunders: the position and the move that should have been played. */
+  puzzle?: Puzzle;
+}
+
+/** A position from the player's own game where they went wrong, to practice. */
+export interface Puzzle {
+  /** Position before the mistake, with the player to move. */
+  fen: string;
+  /** The move that was played (SAN). */
+  played: string;
+  /** The better move (SAN). */
+  best: string;
 }
 
 export interface GameReview {
@@ -39,22 +53,20 @@ export interface GameReview {
   stats: GameStats;
 }
 
-const CACHE_PREFIX = "chess-analyzer:review:v4:";
+// v5 adds puzzles for mistakes. Reviews live in IndexedDB (see store.ts); the old
+// localStorage copies (v4 and earlier) are removed so they stop filling its quota.
+const CACHE_PREFIX = "review:v5:";
+purgeLegacyReviews();
 
-function cached(key: string): GameReview | null {
+const cached = (key: string) => storeGet<GameReview>(CACHE_PREFIX + key);
+const store = (key: string, review: GameReview) => storeSet(CACHE_PREFIX + key, review);
+
+/** UCI ("e2e4", "e7e8q") to SAN in a position, or null if it isn't legal there. */
+function uciToSan(fen: string, uci: string): string | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
-    return raw ? (JSON.parse(raw) as GameReview) : null;
+    return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san;
   } catch {
     return null;
-  }
-}
-
-function store(key: string, review: GameReview): void {
-  try {
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(review));
-  } catch {
-    // storage full or unavailable: the review just isn't cached
   }
 }
 
@@ -65,7 +77,7 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
   const score = color ? scoreFor(game.result, color) : null;
   if (!color || score === null) return null;
   const key = `${game.id}:${game.evals ? "lichess" : depth}`;
-  const hit = cached(key);
+  const hit = await cached(key);
   if (hit) {
     setGameStats(hit.gameId, hit.stats);
     return hit;
@@ -92,6 +104,13 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
     // player had what they were left with after their previous move.
     const clockBefore = game.clocks ? (i >= 2 ? game.clocks[i - 2] : game.clockInitial) : null;
     const evalAfterWhite = i > 0 ? analysis.moves[i - 1].evalAfterWhite : 20;
+    let puzzle: Puzzle | undefined;
+    if (m.quality === "mistake" || m.quality === "blunder") {
+      // Stockfish reviews know the better move in SAN; Lichess's analysis gives it as UCI.
+      const lichessBest = game.evals?.[i]?.best;
+      const best = m.bestSan ?? (lichessBest ? uciToSan(m.fenBefore, lichessBest) : null);
+      if (best && best !== m.san) puzzle = { fen: m.fenBefore, played: m.san, best };
+    }
     moves.push({
       ply: m.ply,
       phase: m.phase,
@@ -101,12 +120,13 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
       clock: clockBefore ?? null,
       evalBefore: Math.max(-2000, Math.min(2000, color === "w" ? evalAfterWhite : -evalAfterWhite)),
       lostNext: next?.captured ? VALUE[next.captured] : 0,
+      ...(puzzle ? { puzzle } : {}),
     });
   });
 
   const stats = statsFromAnalysis(analysis, color);
   const review: GameReview = { gameId: game.id, color, score, family: ecoFamily(game.eco), clockInitial: game.clockInitial, moves, engine: game.evals ? "lichess" : "stockfish", stats };
-  store(key, review);
+  await store(key, review);
   setGameStats(game.id, stats);
   return review;
 }

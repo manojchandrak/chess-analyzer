@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ecoFamily } from "../lib/eco";
-import { getEngine } from "../lib/engine";
+import { EngineError, getEngine } from "../lib/engine";
 import { scoreFor, type GameRecord } from "../lib/games";
-import { loadLegendGames, loadLegendIndex } from "../lib/legendData";
+import { loadLegendGames, loadLegendIndex, withMoves } from "../lib/legendData";
 import type { LegendIndexEntry } from "../lib/legends";
 import { archetypeOf, similarity, type Traits } from "../lib/profile";
 import { reviewGame } from "../lib/review";
@@ -81,12 +81,29 @@ function LegendDetail({
   const [classicalOnly, setClassicalOnly] = useState(false);
   const [reviewing, setReviewing] = useState<{ game: number; of: number; done: number; total: number } | null>(null);
 
-  async function reviewGames(todo: GameRecord[]) {
-    for (let i = 0; i < todo.length; i++) {
-      setReviewing({ game: i + 1, of: todo.length, done: 0, total: 1 });
-      await reviewGame(todo[i], getEngine(), 10, (done, total) => setReviewing({ game: i + 1, of: todo.length, done, total }));
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  /** Opens a game after fetching its moves (the lists only carry the game's details). */
+  async function openGame(game: GameRecord, heading: string) {
+    try {
+      onOpenGame(await withMoves(game), heading);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "This game couldn't be loaded.");
     }
-    setReviewing(null);
+  }
+
+  async function reviewGames(todo: GameRecord[]) {
+    setReviewError(null);
+    try {
+      for (let i = 0; i < todo.length; i++) {
+        setReviewing({ game: i + 1, of: todo.length, done: 0, total: 1 });
+        await reviewGame(await withMoves(todo[i]), getEngine(), 10, (done, total) => setReviewing({ game: i + 1, of: todo.length, done, total }));
+      }
+    } catch (e) {
+      setReviewError(e instanceof EngineError ? e.message : "The review stopped because of an unexpected error.");
+    } finally {
+      setReviewing(null);
+    }
   }
 
   useEffect(() => {
@@ -147,7 +164,7 @@ function LegendDetail({
       {legend.famous.length > 0 && games && (
         <div className="famous">
           {legend.famous.map((f) => (
-            <button key={f.index} className="btn btn-primary" onClick={() => onOpenGame(games[f.index], `${f.title}: ${headingFor(games[f.index])}`)}>
+            <button key={f.index} className="btn btn-primary" onClick={() => openGame(games[f.index], `${f.title}: ${headingFor(games[f.index])}`)}>
               ▶ {f.title}
             </button>
           ))}
@@ -202,8 +219,9 @@ function LegendDetail({
                 </label>
               )}
             </div>
+            {reviewError && <p className="error-message">{reviewError}</p>}
             {reviewing && <ProgressBar done={reviewing.done} total={reviewing.total} label={`Reviewing game ${reviewing.game} of ${reviewing.of}`} />}
-            <GameList key={`${query}|${result}|${color}|${family}|${classicalOnly}`} games={filtered} onOpen={(g) => onOpenGame(g, headingFor(g))} onReview={reviewGames} reviewing={!!reviewing} />
+            <GameList key={`${query}|${result}|${color}|${family}|${classicalOnly}`} games={filtered} onOpen={(g) => openGame(g, headingFor(g))} onReview={reviewGames} reviewing={!!reviewing} />
           </>
         )}
       </section>
