@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ecoFamily } from "../lib/eco";
-import { scoreFor, type GameRecord } from "../lib/games";
+import { gameLength, scoreFor, type GameRecord } from "../lib/games";
 import { useGameStats, type GameStats } from "../lib/gameStats";
 
 interface Props {
@@ -66,7 +66,7 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
       });
     } else if (sort === "oldest") list.sort((a, b) => -byDate(a, b));
     else if (sort === "opponent") list.sort((a, b) => oppElo(b) - oppElo(a));
-    else if (sort === "longest") list.sort((a, b) => b.moves.length - a.moves.length);
+    else if (sort === "longest") list.sort((a, b) => gameLength(b) - gameLength(a));
     else list.sort(byDate);
     return list;
   }, [games, sort, stats]);

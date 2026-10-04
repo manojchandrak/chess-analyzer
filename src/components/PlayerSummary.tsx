@@ -24,6 +24,12 @@ export function PlayerSummary({ color, stats }: { color: "White" | "Black"; stat
         </div>
       </div>
       {diffLabel && <p className="rating-diff">{diffLabel}</p>}
+      {stats.estimatedRating !== null && stats.ratingConfidence !== "high" && (
+        <p className="muted small rating-caveat">
+          {stats.ratingConfidence === "low" ? "Low confidence: " : "Moderate confidence: "}
+          this estimate rests on only {stats.overall.moveCount} moves, so it can swing a lot from game to game.
+        </p>
+      )}
       <div className="overall-accuracy">
         <span className="accuracy-value">{stats.overall.accuracy ?? "—"}%</span>
         <span className="accuracy-label">overall accuracy</span>

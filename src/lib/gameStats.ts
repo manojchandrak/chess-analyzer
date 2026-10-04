@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from "react";
 import type { AnalysisResult } from "./analyze";
 import { estimateRating } from "./rating";
+import { reportStorageProblem } from "./store";
 
 export interface GameStats {
   accuracy: number;
@@ -64,7 +65,7 @@ function flush(): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(stats)));
   } catch {
-    // storage full or unavailable: kept for this visit only
+    reportStorageProblem("Your browser couldn't save your game ratings (storage is full or unavailable), so sorting by them will reset when you close this page.");
   }
   listeners.forEach((l) => l());
 }

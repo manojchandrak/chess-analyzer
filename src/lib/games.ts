@@ -31,8 +31,11 @@ export interface GameRecord {
   /** Clock left (seconds) after each ply, when the site records it. */
   clocks: number[] | null;
   /** Evaluations from White's perspective after each ply (Lichess server analysis). */
-  evals: { cp: number | null; mate: number | null }[] | null;
+  /** `best` is the engine's preferred move (UCI) when Lichess judged the move as an error. */
+  evals: { cp: number | null; mate: number | null; best?: string | null }[] | null;
   moves: string;
+  /** Number of plies, for games whose moves load on demand (the legends' games leave `moves` empty in lists). */
+  plies?: number;
   /** Which side the profiled player had in this game, if known. */
   playerColor: "w" | "b" | null;
 }
@@ -130,4 +133,9 @@ export function toPgn(g: GameRecord): string {
   const sans = g.moves.split(" ").filter(Boolean);
   const body = sans.map((s, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${s}` : s)).join(" ");
   return `${head}\n\n${body} ${g.result}\n`;
+}
+
+/** Game length in plies, without needing the moves to be loaded. */
+export function gameLength(g: GameRecord): number {
+  return g.plies ?? (g.moves ? g.moves.split(" ").length : 0);
 }

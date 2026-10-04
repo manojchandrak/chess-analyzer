@@ -143,6 +143,10 @@ export const LEGENDS: LegendMeta[] = [
  * over-the-board classical games when there are enough of them. */
 export const FAST_EVENT = /blitz|bullet|speed|rapid|banter|titled|armageddon|online|chess\.com|lichess|chess24|960|fischer random|lightning|simul|blindfold|exhib|internet|icc|playchess|clock/i;
 
+/** Games per moves file: public/legends/<id>.m<k>.json holds the move text of games k*500 … k*500+499,
+ * loaded only when a game is opened, so the game lists stay small. */
+export const MOVES_CHUNK = 500;
+
 /** Row layout of public/legends/<id>.json games (arrays keep the file small). */
 export type LegendGameRow = [
   white: string,
@@ -153,7 +157,8 @@ export type LegendGameRow = [
   eco: string | null,
   whiteElo: number | null,
   blackElo: number | null,
-  moves: string,
+  /** Length in plies (the moves themselves are in the moves files). */
+  plies: number,
   fast: 0 | 1,
   /** The legend's color in this game. */
   color: "w" | "b",

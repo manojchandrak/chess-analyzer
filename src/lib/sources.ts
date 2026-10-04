@@ -24,7 +24,7 @@ interface LichessGame {
   moves: string;
   clocks?: number[];
   clock?: { initial: number; increment: number };
-  analysis?: { eval?: number; mate?: number }[];
+  analysis?: { eval?: number; mate?: number; best?: string }[];
   initialFen?: string;
 }
 
@@ -32,7 +32,7 @@ const LICHESS_TERMINATION: Record<string, Termination> = { mate: "mate", resign:
 const LICHESS_SPEED: Record<string, TimeClass> = { ultraBullet: "bullet", bullet: "bullet", blitz: "blitz", rapid: "rapid", classical: "classical", correspondence: "daily" };
 
 /** Turns one Lichess NDJSON game into a record (null for variants, aborted games…). */
-function lichessRecord(g: LichessGame, user: string): GameRecord | null {
+export function lichessRecord(g: LichessGame, user: string): GameRecord | null {
   if (g.variant !== "standard" || g.initialFen || !g.moves) return null;
   if (["aborted", "noStart", "unknownFinish"].includes(g.status)) return null;
   const termination = LICHESS_TERMINATION[g.status] ?? "other";
@@ -57,7 +57,7 @@ function lichessRecord(g: LichessGame, user: string): GameRecord | null {
     termination,
     clockInitial: g.clock?.initial ?? null,
     clocks: g.clocks ? g.clocks.map((c) => c / 100) : null,
-    evals: g.analysis ? g.analysis.map((a) => ({ cp: a.eval ?? null, mate: a.mate ?? null })) : null,
+    evals: g.analysis ? g.analysis.map((a) => ({ cp: a.eval ?? null, mate: a.mate ?? null, best: a.best ?? null })) : null,
     moves: g.moves,
     playerColor: white.toLowerCase() === user.toLowerCase() ? "w" : black.toLowerCase() === user.toLowerCase() ? "b" : null,
   };
@@ -93,7 +93,13 @@ export async function fetchLichessGames(username: string, max: number, onProgres
     buffer = done ? "" : (lines.pop() ?? "");
     for (const line of lines) {
       if (!line.trim()) continue;
-      const record = lichessRecord(JSON.parse(line) as LichessGame, user);
+      // One malformed line shouldn't throw away a whole export: skip it and keep going.
+      let record: GameRecord | null = null;
+      try {
+        record = lichessRecord(JSON.parse(line) as LichessGame, user);
+      } catch {
+        continue;
+      }
       if (record && games.length < max) games.push(record);
     }
     if (!Number.isFinite(max)) onProgress?.(`Lichess: ${games.length.toLocaleString()} games so far…`);
@@ -140,10 +146,26 @@ function chessComOpening(ecoUrl: string | undefined): string | null {
   return words.join(" ") || null;
 }
 
+/** fetch() that waits and retries when Chess.com rate-limits (429) or has a brief server error. */
+export async function fetchWithRetry(url: string, signal?: AbortSignal, attempts = 4): Promise<Response> {
+  let res = await fetch(url, { signal });
+  for (let i = 1; i < attempts && (res.status === 429 || res.status >= 500); i++) {
+    const header = res.headers.get("Retry-After");
+    const wait = header !== null && Number.isFinite(Number(header)) ? Number(header) * 1000 : 1000 * 2 ** i;
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(resolve, Math.min(wait, 15_000));
+      signal?.addEventListener("abort", () => (clearTimeout(t), reject(new DOMException("Aborted", "AbortError"))), { once: true });
+    });
+    res = await fetch(url, { signal });
+  }
+  return res;
+}
+
 export async function fetchChessComGames(username: string, max: number, onProgress?: Progress, signal?: AbortSignal): Promise<GameRecord[]> {
   const user = username.trim().toLowerCase();
   onProgress?.(`Chess.com: finding ${user}'s monthly archives…`);
-  const res = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`, { signal });
+  const res = await fetchWithRetry(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`, signal);
+  if (res.status === 429) throw new Error("Chess.com is rate-limiting requests right now. Wait a minute and try again.");
   if (res.status === 404) throw new Error(`Chess.com user "${username.trim()}" not found.`);
   if (!res.ok) throw new Error(`Chess.com returned HTTP ${res.status}.`);
   const { archives } = (await res.json()) as { archives: string[] };
@@ -160,7 +182,7 @@ export async function fetchChessComGames(username: string, max: number, onProgre
     );
     let month: Response;
     try {
-      month = await fetch(archive, { signal });
+      month = await fetchWithRetry(archive, signal);
     } catch (e) {
       if (signal?.aborted) break; // cancelled: keep the months already read
       throw e;
@@ -200,4 +222,16 @@ export async function fetchChessComGames(username: string, max: number, onProgre
   }
   onProgress?.(`Chess.com: ${games.length.toLocaleString()} games loaded.`);
   return games;
+}
+
+/** One Lichess game by id (for shared links). It has no "player", so playerColor is null. */
+export async function fetchLichessGame(id: string, signal?: AbortSignal): Promise<GameRecord> {
+  const params = new URLSearchParams({ moves: "true", opening: "true", clocks: "true", evals: "true" });
+  const res = await fetch(`https://lichess.org/game/export/${encodeURIComponent(id)}?${params}`, { headers: { Accept: "application/json" }, signal });
+  if (res.status === 404) throw new Error("That Lichess game wasn't found.");
+  if (res.status === 429) throw new Error("Lichess is rate-limiting requests right now. Try again in a minute.");
+  if (!res.ok) throw new Error(`Lichess returned HTTP ${res.status}.`);
+  const record = lichessRecord((await res.json()) as LichessGame, "");
+  if (!record) throw new Error("That game can't be shown here (it isn't standard chess).");
+  return record;
 }

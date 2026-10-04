@@ -35,3 +35,13 @@ export function estimateRating(averageCpLoss: number): number {
   }
   return last[1];
 }
+
+export type RatingConfidence = "low" | "medium" | "high";
+
+/** How much to trust a one-game rating estimate: it comes from the player's own
+ * moves, and a short game is a small sample. */
+export function ratingConfidence(moveCount: number): RatingConfidence {
+  if (moveCount < 20) return "low";
+  if (moveCount < 40) return "medium";
+  return "high";
+}
