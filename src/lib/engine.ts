@@ -7,7 +7,19 @@ export interface EngineEval {
   best?: string | null;
   /** Score of the second-best move (MultiPV 2), when requested and available. */
   second?: { cp: number | null; mate: number | null } | null;
+  /** The engine's top moves, best first, with their scores (MultiPV 2 or 3). */
+  alternatives?: EngineMove[];
 }
+
+/** One candidate move: UCI notation and its score from the side to move's perspective. */
+export interface EngineMove {
+  uci: string;
+  cp: number | null;
+  mate: number | null;
+}
+
+/** How many candidate moves one evaluation can ask the engine for. */
+export type MultiPv = 1 | 2 | 3;
 
 const SCRIPT = () => `${import.meta.env.BASE_URL}engine/stockfish-19-lite-single.js`;
 
@@ -57,7 +69,7 @@ function startWorker(): { worker: Worker; ready: Promise<void> } {
 interface Job {
   fen: string;
   depth: number;
-  multiPv: 1 | 2;
+  multiPv: MultiPv;
   resolve: (e: EngineEval) => void;
   reject: (err: Error) => void;
 }
@@ -117,7 +129,7 @@ export class StockfishEngine {
   /** Evaluates a FEN position to the given depth, returning the best move and its
    * score from the perspective of the side to move (plus the second-best move's
    * score with `multiPv: 2`). Rejects with an EngineError if Stockfish fails. */
-  evaluate(fen: string, depth: number, opts: { multiPv?: 1 | 2 } = {}): Promise<EngineEval> {
+  evaluate(fen: string, depth: number, opts: { multiPv?: MultiPv } = {}): Promise<EngineEval> {
     if (this.terminated) return Promise.reject(new EngineError("The engine was shut down."));
     return new Promise<EngineEval>((resolve, reject) => {
       this.jobs.push({ fen, depth, multiPv: opts.multiPv ?? 1, resolve, reject });
@@ -161,7 +173,7 @@ export class StockfishEngine {
     }
     worker.postMessage(`position fen ${job.fen}`);
 
-    const lines: ({ cp: number | null; mate: number | null } | null)[] = [null, null];
+    const lines: (EngineMove | null)[] = [null, null, null];
     let timer: ReturnType<typeof setTimeout>;
     const cleanup = () => {
       clearTimeout(timer);
@@ -174,14 +186,17 @@ export class StockfishEngine {
       if (line.startsWith("info") && !line.includes("upperbound") && !line.includes("lowerbound")) {
         const score = parseScore(line);
         const pv = Number(line.match(/multipv (\d+)/)?.[1] ?? 1);
-        if (score && pv <= 2) lines[pv - 1] = score;
+        const uci = line.match(/ pv (\S+)/)?.[1];
+        if (score && uci && pv <= 3) lines[pv - 1] = { uci, ...score };
       }
       if (line.startsWith("bestmove")) {
         cleanup();
         const best = line.split(" ")[1];
         // "bestmove (none)": no legal moves (mate or stalemate), keep the reported score
         const top = lines[0] ?? { cp: 0, mate: null };
-        finish(() => job.resolve({ ...top, best: best && best !== "(none)" ? best : null, second: job.multiPv > 1 ? lines[1] : null }), true);
+        const second = lines[1] ? { cp: lines[1].cp, mate: lines[1].mate } : null;
+        const alternatives = lines.slice(0, job.multiPv).filter((l): l is EngineMove => !!l);
+        finish(() => job.resolve({ cp: top.cp, mate: top.mate, best: best && best !== "(none)" ? best : null, second: job.multiPv > 1 ? second : null, alternatives }), true);
       }
     };
     const onError = () => {

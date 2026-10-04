@@ -634,3 +634,28 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .drill-result { font-weight: 700; margin-right: auto; }
 .drill-result-clean { color: var(--accent); }
 .drill-result-failed { color: var(--danger); }
+
+/* ---------- Commentary, alternatives, play-on ---------- */
+.commentary { padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 0.92rem; line-height: 1.45; min-height: 64px; }
+.commentary p { margin: 0; }
+.commentary .eyebrow { margin-bottom: 2px; color: var(--accent); }
+.alternatives { padding: 10px 12px; }
+.alt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; font-size: 0.9rem; }
+.alt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.alt-list li { display: flex; align-items: baseline; gap: 10px; padding: 3px 6px; border-radius: 6px; font-size: 0.9rem; }
+.alt-played { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.alt-rank { flex: 0 0 1.2em; color: var(--text-muted); text-align: right; }
+.alt-san { flex: 0 0 3.6em; }
+.alt-eval { flex: 0 0 3.6em; font-variant-numeric: tabular-nums; }
+.alt-note { flex: 1; min-width: 0; }
+.engine-play { padding: 0 8px; line-height: 1.4; flex: 0 0 auto; }
+.engine-lines li { display: flex; align-items: center; gap: 4px; }
+.engine-lines li .engine-line-row { flex: 1; width: auto; }
+.explore-options { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; }
+.explore-status { min-height: 1.5em; }
+.explore-moves { max-height: 220px; }
+.mv-static { cursor: default; }
+.promotion-choice { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+.explore-empty { margin: 4px 8px; }
+.fen-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.fen-form input { flex: 1; min-width: 220px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }

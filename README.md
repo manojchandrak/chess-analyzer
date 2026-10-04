@@ -40,6 +40,21 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
   per-player classification table, accuracy by phase and a clickable evaluation
   chart. Choose from 7 piece sets and 8 board color themes.
+- **Move-by-move commentary**: a short plain-English note on every move: what it does
+  (capture, check, castling, development, a piece left hanging), the engine's verdict
+  and how the evaluation changed, who is ahead, the opening reached and when the game
+  leaves the book. It works without the engine too; the 💬 button hides it, and
+  **Download PGN** includes it in the move comments.
+- **Alternative moves**: after a Stockfish review, every move lists the engine's top
+  three choices in that position with their evaluations and how far each is behind the
+  best. **Show the position before the move** draws them as arrows (best in green,
+  runners-up in blue and purple, the move played in red).
+- **Play on from here**: **Play from this position** (or ▶ next to an alternative or an
+  engine line) opens a playable board at that point. Move the pieces for both sides to
+  explore, or play White or Black against Stockfish at three strengths (beginner, club,
+  strong), with live evaluation, engine lines, undo, a best-move hint and game-over
+  detection. You can also start from any position by pasting a FEN on the *Analyze a
+  game* tab.
 - **Engine lines and arrows**: with Stockfish on, the viewer shows the top three
   lines with arrows on the board (click a line to emphasize it), and a green arrow
   for the move you should have played. **Download PGN** saves the game with

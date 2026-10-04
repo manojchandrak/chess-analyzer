@@ -3,7 +3,8 @@ import { useAutoplay } from "../hooks/useAutoplay";
 import { useLiveEval } from "../hooks/useLiveEval";
 import { useSpokenMoves } from "../hooks/useSpokenMoves";
 import { formatScore } from "../lib/accuracy";
-import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type AnalysisResult } from "../lib/analyze";
+import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type AltMove, type AnalysisResult } from "../lib/analyze";
+import { buildCommentary } from "../lib/commentary";
 import { CLASS_META } from "../lib/classify";
 import { uciSquares, type BoardArrow } from "../lib/boardText";
 import { EngineError, type StockfishEngine } from "../lib/engine";
@@ -13,10 +14,12 @@ import { loadOpenings, openingsAlong, type OpeningName } from "../lib/openings";
 import type { ParsedGame } from "../lib/pgn";
 import { annotatedPgn, downloadText, pgnFilename } from "../lib/pgnExport";
 import { sanSquares } from "../lib/uci";
+import { Alternatives } from "./Alternatives";
 import { Board } from "./Board";
 import { BoardSettings } from "./BoardSettings";
 import { ClassificationTable } from "./ClassificationTable";
 import { EngineLines } from "./EngineLines";
+import { ExploreView } from "./ExploreView";
 import { EvalBar } from "./EvalBar";
 import { EvalChart } from "./EvalChart";
 import { PhaseTable } from "./PhaseTable";
@@ -42,11 +45,13 @@ interface Props {
   onPlyChange?: (ply: number) => void;
   /** A link that reopens this game at the current move (Lichess and legend games). */
   shareUrl?: string | null;
+  /** Open straight into "play from this position" with this FEN (no game to step through). */
+  exploreFen?: string;
 }
 
 const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
 
-export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth, initialPly, onPlyChange, shareUrl }: Props) {
+export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth, initialPly, onPlyChange, shareUrl, exploreFen }: Props) {
   const [ply, setPly] = useState(() => Math.max(0, Math.min(initialPly ?? 0, game.moves.length)));
   const [flipped, setFlipped] = useState(record?.playerColor === "b");
   const [depth, setDepth] = useState(autoAnalyzeDepth ?? 12);
@@ -63,10 +68,16 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const [showArrows, setShowArrows] = useState(true);
   const [focusLine, setFocusLine] = useState<{ fen: string; index: number } | null>(null);
   const [copied, setCopied] = useState<"pgn" | "link" | false>(false);
+  const [showCommentary, setShowCommentary] = useState(true);
+  // "Play on from here": a position (and optionally the first moves) to continue from.
+  const [explore, setExplore] = useState<{ startFen: string; initialUci?: string[]; label: string } | null>(() => (exploreFen ? { startFen: exploreFen, label: "from your position" } : null));
+  // Showing the position before the current move (to see the alternatives on the board).
+  const [beforeView, setBeforeView] = useState<{ ply: number; on: boolean } | null>(null);
   const [openingDb, setOpeningDb] = useState<Map<string, OpeningName> | null>(null);
 
   const current = ply > 0 ? game.moves[ply - 1] : null;
-  const fen = current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
+  const showBefore = !!current && beforeView?.ply === ply && beforeView.on;
+  const fen = showBefore && current ? current.fenBefore : current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
   const openings = useMemo(() => (openingDb ? openingsAlong(game.moves, openingDb) : null), [openingDb, game]);
   const opening = openings?.perPly[ply] ?? null;
 
@@ -100,7 +111,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
       setProgress({ done: 0, total: game.moves.length + 1 });
       try {
         const bookPlies = Math.max(record?.openingPly ?? 0, openingsAlong(game.moves, await loadOpenings()).bookPlies);
-        const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 2, bookPlies });
+        const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 3, bookPlies });
         const key = record ? `${record.id}:${atDepth}` : null;
         if (key) analysisCache.set(key, result);
         if (record?.playerColor) setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
@@ -121,6 +132,9 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   }, [game, autoAnalyzeDepth, engine]);
 
   const currentAnalysis = analysis && ply > 0 ? analysis.moves[ply - 1] : null;
+  const commentary = useMemo(() => buildCommentary(game, analysis, { openings }), [game, analysis, openings]);
+  const moveLabel = (m: { moveNumber: number; color: "w" | "b"; san: string }) => `${m.moveNumber}${m.color === "w" ? "." : "…"} ${m.san}`;
+  const playFrom = (startFen: string, label: string, initialUci?: string[]) => setExplore({ startFen, label, initialUci });
 
   // What the eval bar shows. To keep it steady while stepping through moves: the
   // review's eval until the live engine is at least as deep on this position,
@@ -149,18 +163,27 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const arrows = useMemo(() => {
     if (!showArrows) return [];
     const out: BoardArrow[] = [];
-    if (current && currentAnalysis?.bestSan) {
+    if (showBefore && current && currentAnalysis) {
+      // The position before the move: the engine's choices (best in green) and the move played (red).
+      const colors = ["#81b64c", "#4a90d9", "#9b7ede"];
+      currentAnalysis.alternatives.forEach((a, i) => {
+        const sq = uciSquares(a.uci);
+        if (sq && !a.played) out.push({ ...sq, color: colors[i] ?? colors[2], opacity: i === 0 ? 0.85 : 0.6 });
+      });
+      out.push({ from: current.from, to: current.to, color: "#ca3431", opacity: 0.7 });
+    } else if (current && currentAnalysis?.bestSan) {
       const sq = sanSquares(current.fenBefore, currentAnalysis.bestSan);
       if (sq) out.push({ ...sq, color: "#81b64c", opacity: 0.8 });
     }
-    if (liveHere) {
+    // (Not in the before-the-move view, where the alternatives above already show the engine's choices.)
+    if (liveHere && !showBefore) {
       liveHere.lines.slice(0, 3).forEach((line, i) => {
         const sq = uciSquares(line.pv[0] ?? "");
         if (sq) out.push({ ...sq, color: i === focus ? "#2f7fc0" : "#7aa6cf", opacity: i === focus ? 0.9 : 0.45 });
       });
     }
     return out;
-  }, [showArrows, current, currentAnalysis, liveHere, focus]);
+  }, [showArrows, showBefore, current, currentAnalysis, liveHere, focus]);
 
   const pairs = useMemo(() => {
     const out: { no: number; w?: number; b?: number }[] = [];
@@ -188,6 +211,10 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   };
 
   const meta = currentAnalysis ? CLASS_META[currentAnalysis.cls] : null;
+
+  if (explore) {
+    return <ExploreView startFen={explore.startFen} initialUci={explore.initialUci} label={explore.label} flipped={flipped} engine={engine} onExit={() => (exploreFen ? onBack?.() : setExplore(null))} exitLabel={exploreFen ? "← Back" : undefined} />;
+  }
 
   return (
     <section className="viewer">
@@ -224,8 +251,8 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             <Board
               fen={fen}
               flipped={flipped}
-              lastMove={current ? { from: current.from, to: current.to } : null}
-              badge={current && meta ? { square: current.to, symbol: meta.symbol, color: meta.color, label: meta.label } : null}
+              lastMove={current && !showBefore ? { from: current.from, to: current.to } : null}
+              badge={current && meta && !showBefore ? { square: current.to, symbol: meta.symbol, color: meta.color, label: meta.label } : null}
               arrows={arrows}
             />
           </div>
@@ -271,6 +298,9 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             <button className={`btn btn-ghost${showArrows ? " btn-on" : ""}`} onClick={() => setShowArrows((s) => !s)} aria-pressed={showArrows} aria-label="Show arrows" title="Arrows for the best move and engine lines">
               ➚
             </button>
+            <button className={`btn btn-ghost${showCommentary ? " btn-on" : ""}`} onClick={() => setShowCommentary((s) => !s)} aria-pressed={showCommentary} aria-label="Show commentary" title="Commentary on each move">
+              💬
+            </button>
           </div>
           <BoardSettings />
         </div>
@@ -295,7 +325,13 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 {current?.san.includes("#") ? (
                   <strong>Checkmate</strong>
                 ) : liveShown && liveScore ? (
-                  <EngineLines info={liveShown} current={!!liveHere} focus={focus} onFocus={(index) => setFocusLine({ fen, index })} />
+                  <EngineLines
+                    info={liveShown}
+                    current={!!liveHere}
+                    focus={focus}
+                    onFocus={(index) => setFocusLine({ fen, index })}
+                    onPlay={(line) => playFrom(liveShown.fen, `from the engine line ${line.pv[0]}`, line.pv.slice(0, 1))}
+                  />
                 ) : (
                   <span className="muted small">thinking…</span>
                 )}
@@ -330,6 +366,23 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 .
               </span>
             </div>
+          )}
+
+          {showCommentary && (
+            <div className="commentary" aria-live="polite">
+              <p className="eyebrow">Commentary</p>
+              <p>{commentary[ply] ?? ""}</p>
+            </div>
+          )}
+
+          {currentAnalysis && current && (
+            <Alternatives
+              move={currentAnalysis}
+              showingBefore={showBefore}
+              fromStockfish={fromStockfish}
+              onToggleBefore={() => setBeforeView({ ply, on: !showBefore })}
+              onPlay={(alt: AltMove) => playFrom(current.fenBefore, `from here with ${alt.san} instead of ${current.san}`, [alt.uci])}
+            />
           )}
 
           <div className="opening-line" aria-live="polite">
@@ -402,8 +455,11 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             >
               {copied === "link" ? "Link copied" : "Copy link"}
             </button>
-            <button className="btn btn-ghost" onClick={() => downloadText(pgnFilename(game), annotatedPgn(game, record, analysis))} title={analysis ? "Moves with evaluations and annotations" : "Moves only; run the review first to include evaluations"}>
+            <button className="btn btn-ghost" onClick={() => downloadText(pgnFilename(game), annotatedPgn(game, record, analysis, commentary))} title={analysis ? "Moves with evaluations and annotations" : "Moves only; run the review first to include evaluations"}>
               Download PGN
+            </button>
+            <button className="btn btn-primary" onClick={() => playFrom(fen, showBefore && current ? `from before ${moveLabel(current)}` : current ? `from after ${moveLabel(current)}` : "from the starting position")}>
+              Play from this position
             </button>
             <a className="btn btn-ghost" href={`https://lichess.org/analysis/${fen.replace(/ /g, "_")}`} target="_blank" rel="noreferrer">
               Open position on Lichess

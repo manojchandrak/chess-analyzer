@@ -1,12 +1,22 @@
 import { Chess } from "chess.js";
 import { classifyMove, moveAccuracy, toCentipawns, winPercent, type MoveQuality } from "./accuracy";
 import { CLASS_ORDER, classifyMoves, type MoveClass } from "./classify";
-import type { EngineEval, StockfishEngine } from "./engine";
+import type { EngineEval, MultiPv, StockfishEngine } from "./engine";
 import { nonPawnMaterial } from "./material";
 import type { ParsedGame, ParsedMove } from "./pgn";
 import { estimateRating, ratingConfidence, type RatingConfidence } from "./rating";
 
 export type Phase = "opening" | "middlegame" | "endgame";
+
+/** One of the engine's top choices in the position a move was played from. */
+export interface AltMove {
+  san: string;
+  uci: string;
+  /** Evaluation after this move, in centipawns from White's point of view (mate saturated). */
+  evalWhite: number;
+  /** True when this is the move that was actually played. */
+  played: boolean;
+}
 
 export interface MoveAnalysis extends ParsedMove {
   cpLoss: number;
@@ -19,6 +29,8 @@ export interface MoveAnalysis extends ParsedMove {
   cls: MoveClass;
   /** The engine's preferred move in this position (SAN), when it differs from the one played. */
   bestSan: string | null;
+  /** The engine's top moves in the position before this one (empty without a Stockfish review). */
+  alternatives: AltMove[];
 }
 
 export interface PhaseStats {
@@ -93,7 +105,7 @@ export async function analyzeGame(
   engine: StockfishEngine,
   depth: number,
   onProgress?: (done: number, total: number) => void,
-  opts: AnalyzeOptions & { multiPv?: 1 | 2 } = {},
+  opts: AnalyzeOptions & { multiPv?: MultiPv } = {},
 ): Promise<AnalysisResult> {
   const fens = [game.moves[0]?.fenBefore ?? standardStartFen(), ...game.moves.map((m) => m.fenAfter)];
 
@@ -170,7 +182,13 @@ export function analyzeWithEvals(game: ParsedGame, evals: EngineEval[], opts: An
     const cls = classes[i].cls;
     const best = evals[i].best;
     const bestSan = best && !["best", "brilliant", "great", "book"].includes(cls) ? sanOf(move.fenBefore, best) : null;
-    return { ...move, cpLoss, accuracy, quality: classifyMove(winBefore - winAfter), phase, evalAfterWhite, cls, bestSan };
+    const sign = mover === "w" ? 1 : -1;
+    const alternatives: AltMove[] = [];
+    for (const a of evals[i].alternatives ?? []) {
+      const san = sanOf(move.fenBefore, a.uci);
+      if (san) alternatives.push({ san, uci: a.uci, evalWhite: sign * toCentipawns(a), played: san === move.san });
+    }
+    return { ...move, cpLoss, accuracy, quality: classifyMove(winBefore - winAfter), phase, evalAfterWhite, cls, bestSan, alternatives };
   });
 
   const whiteMoves = moves.filter((m) => m.color === "w");

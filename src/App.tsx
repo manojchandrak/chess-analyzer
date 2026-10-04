@@ -3,6 +3,7 @@ import "./App.css";
 import { Drills } from "./components/Drills";
 import { GameViewer } from "./components/GameViewer";
 import { Legends } from "./components/Legends";
+import { FenInput } from "./components/FenInput";
 import { MyGames } from "./components/MyGames";
 import { PgnInput } from "./components/PgnInput";
 import { RecentGames } from "./components/RecentGames";
@@ -20,6 +21,8 @@ interface Viewing {
   heading?: string;
   autoAnalyzeDepth?: number;
   initialPly?: number;
+  /** Open straight into "play from this position" (no game to step through). */
+  exploreFen?: string;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -126,6 +129,11 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, scrollBack.current));
   }
 
+  function startFromFen(fen: string) {
+    scrollBack.current = window.scrollY;
+    setViewing({ game: { white: "Position", black: "", whiteElo: null, blackElo: null, result: "*", moves: [] }, record: null, exploreFen: fen });
+  }
+
   function analyzePgn() {
     setPgnError(null);
     try {
@@ -176,6 +184,7 @@ function App() {
           onBack={closeViewer}
           autoAnalyzeDepth={viewing.autoAnalyzeDepth}
           initialPly={viewing.initialPly}
+          exploreFen={viewing.exploreFen}
           onPlyChange={setViewPly}
           shareUrl={shareUrl}
         />
@@ -201,6 +210,8 @@ function App() {
       </div>
       <div hidden={!!viewing || tab !== "pgn"}>
         <RecentGames onAnalyze={(g) => openRecord(g)} />
+        <h3 className="or-heading">Or start from a position</h3>
+        <FenInput onStart={startFromFen} />
         <h3 className="or-heading">Or paste a PGN</h3>
         <PgnInput pgnText={pgnText} onChange={setPgnText} depth={depth} onDepthChange={setDepth} onAnalyze={analyzePgn} disabled={!engine} />
         {pgnError && <p className="error-message">{pgnError}</p>}

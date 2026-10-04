@@ -44,3 +44,20 @@ describe("pgnFilename", () => {
     expect(pgnFilename({ ...parsePgn("1. e4"), white: "Magnus C.", black: "x/y" })).toBe("Magnus_C_vs_x_y.pgn");
   });
 });
+
+describe("annotatedPgn with commentary", () => {
+  const game = parsePgn('[White "Ann"]\n[Black "Bo"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 1-0');
+  it("puts the commentary in each move's comment, keeping braces out of it", () => {
+    const commentary = ["intro", "White stakes a claim {in} the center.", "Black plays e5.", "White develops the knight to f3."];
+    const pgn = annotatedPgn(game, null, null, commentary);
+    expect(pgn).toContain("1. e4 {White stakes a claim in the center.}");
+    expect(pgn).toContain("1... e5 {Black plays e5.}");
+    expect(pgn).not.toContain("intro");
+  });
+  it("adds it after the evaluation when the game was analyzed", () => {
+    const mv = (i: number) => ({ ...game.moves[i], cls: "best", evalAfterWhite: 30, bestSan: null, alternatives: [] }) as unknown as MoveAnalysis;
+    const analysis = { moves: [mv(0), mv(1), mv(2)] } as unknown as AnalysisResult;
+    const pgn = annotatedPgn(game, null, analysis, ["", "The engine's top choice.", "", ""]);
+    expect(pgn).toContain("1. e4 {[%eval 0.30] The engine's top choice.}");
+  });
+});
