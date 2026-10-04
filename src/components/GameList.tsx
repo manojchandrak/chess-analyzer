@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ecoFamily } from "../lib/eco";
-import { gameLength, scoreFor, type GameRecord } from "../lib/games";
-import { useGameStats, type GameStats } from "../lib/gameStats";
+import { scoreFor, type GameRecord } from "../lib/games";
+import { useGameStats } from "../lib/gameStats";
+import { DEFAULT_DIRECTION, needsReview, PRESETS, presetOf, sortGames, toggleSort, type Sort, type SortBy } from "../lib/gameSort";
 
 interface Props {
   games: GameRecord[];
@@ -12,71 +13,49 @@ interface Props {
   reviewing?: boolean;
 }
 
-type SortKey = "newest" | "oldest" | "brilliant" | "great" | "accuracy" | "performance" | "fewestBlunders" | "mostBlunders" | "opponent" | "longest";
-
-const SORTS: { id: SortKey; label: string; needsStats?: boolean }[] = [
-  { id: "newest", label: "Newest first" },
-  { id: "oldest", label: "Oldest first" },
-  { id: "brilliant", label: "Most brilliant moves", needsStats: true },
-  { id: "great", label: "Most great moves", needsStats: true },
-  { id: "accuracy", label: "Highest accuracy", needsStats: true },
-  { id: "performance", label: "Best game performance", needsStats: true },
-  { id: "fewestBlunders", label: "Fewest blunders", needsStats: true },
-  { id: "mostBlunders", label: "Most blunders", needsStats: true },
-  { id: "opponent", label: "Strongest opponent" },
-  { id: "longest", label: "Longest games" },
-];
-
-const STAT_SORT: Partial<Record<SortKey, (s: GameStats) => number>> = {
-  brilliant: (s) => s.brilliant * 1000 + s.great * 10 + s.accuracy / 10,
-  great: (s) => s.great * 1000 + s.brilliant * 10 + s.accuracy / 10,
-  accuracy: (s) => s.accuracy,
-  performance: (s) => s.performance,
-  fewestBlunders: (s) => -(s.blunders * 1000 + s.mistakes * 10) + s.accuracy / 100,
-  mostBlunders: (s) => s.blunders * 1000 + s.mistakes * 10,
-};
-
 const RESULT_LABEL = { 1: "Win", 0.5: "Draw", 0: "Loss" } as const;
+const REVIEW_COUNTS = [10, 25, 50];
+const NOT_REVIEWED = "Not reviewed yet. Open the game, or use the Review button above the table, to fill this in.";
+
 // The chosen order survives filters and re-opening the list during the visit.
-let lastSort: SortKey = "newest";
+let lastSort: Sort = { by: "date", dir: "desc" };
+
+/** A column header you can click to sort by that column; click again to reverse. */
+function SortHeader({ by, sort, onSort, className, title, children }: { by: SortBy; sort: Sort; onSort: (by: SortBy) => void; className?: string; title?: string; children: React.ReactNode }) {
+  const active = sort.by === by;
+  const word = active ? (sort.dir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <th className={className} aria-sort={word} title={title}>
+      <button type="button" className={`th-sort${active ? " th-sort-on" : ""}`} onClick={() => onSort(by)} aria-label={`${title ?? String(children)}: sort ${active && sort.dir === DEFAULT_DIRECTION[by] ? "the other way" : "by this column"}`}>
+        {children}
+        <span className="th-arrow" aria-hidden="true">
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
+}
 
 export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: Props) {
   const stats = useGameStats();
-  const [sort, setSortState] = useState<SortKey>(lastSort);
+  const [sort, setSortState] = useState<Sort>(lastSort);
   const [page, setPage] = useState(0);
-  const setSort = (s: SortKey) => {
+  const [reviewCount, setReviewCount] = useState(10);
+  const setSort = (s: Sort) => {
     lastSort = s;
     setSortState(s);
     setPage(0);
   };
 
-  const sorted = useMemo(() => {
-    const oppElo = (g: GameRecord) => (g.playerColor === "b" ? g.whiteElo : g.blackElo) ?? 0;
-    const byDate = (a: GameRecord, b: GameRecord) => (b.date ?? "").localeCompare(a.date ?? "");
-    const statKey = STAT_SORT[sort];
-    const list = [...games];
-    if (statKey) {
-      // Reviewed games first, best to worst; unreviewed games after, newest first.
-      list.sort((a, b) => {
-        const sa = stats.get(a.id);
-        const sb = stats.get(b.id);
-        if (sa && sb) return statKey(sb) - statKey(sa);
-        if (sa || sb) return sa ? -1 : 1;
-        return byDate(a, b);
-      });
-    } else if (sort === "oldest") list.sort((a, b) => -byDate(a, b));
-    else if (sort === "opponent") list.sort((a, b) => oppElo(b) - oppElo(a));
-    else if (sort === "longest") list.sort((a, b) => gameLength(b) - gameLength(a));
-    else list.sort(byDate);
-    return list;
-  }, [games, sort, stats]);
-
+  const sorted = useMemo(() => sortGames(games, stats, sort), [games, sort, stats]);
   const reviewedCount = useMemo(() => games.filter((g) => stats.has(g.id)).length, [games, stats]);
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const current = Math.min(page, pages - 1);
   const shown = sorted.slice(current * pageSize, (current + 1) * pageSize);
   const showStats = reviewedCount > 0;
-  const nextToReview = sorted.filter((g) => !stats.has(g.id)).slice(0, 10);
+  const toReview = sorted.filter((g) => g.playerColor !== null && !stats.has(g.id));
+  const next = toReview.slice(0, reviewCount);
+  const preset = presetOf(sort);
 
   if (games.length === 0) return <p className="muted">No games match.</p>;
   return (
@@ -84,40 +63,70 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
       <div className="list-toolbar">
         <label>
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-            {SORTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
+          <select
+            value={preset ?? ""}
+            onChange={(e) => {
+              const p = PRESETS.find((x) => x.id === e.target.value);
+              if (p) setSort(p.sort);
+            }}
+          >
+            {preset === null && (
+              <option value="" disabled>
+                By column: {sort.by === "opening" ? "opening" : sort.by} ({sort.dir === "asc" ? "ascending" : "descending"})
+              </option>
+            )}
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
               </option>
             ))}
           </select>
         </label>
         <span className="muted small">
           {reviewedCount} of {games.length} reviewed
-          {SORTS.find((s) => s.id === sort)?.needsStats && reviewedCount < games.length ? ": only reviewed games can be ranked" : ""}
+          {needsReview(sort.by) && reviewedCount < games.length ? ": only reviewed games are ranked, the rest follow" : ""}
         </span>
-        {onReview && nextToReview.length > 0 && (
-          <button className="btn btn-ghost" disabled={reviewing} onClick={() => onReview(nextToReview)}>
-            {reviewing ? "Reviewing…" : `Review next ${nextToReview.length} games`}
-          </button>
+        {onReview && toReview.length > 0 && (
+          <span className="review-next">
+            <button className="btn btn-ghost" disabled={reviewing} onClick={() => onReview(next)} title="Run Stockfish over the next unreviewed games, in the order shown below">
+              {reviewing ? "Reviewing…" : `Review next ${next.length} game${next.length === 1 ? "" : "s"}`}
+            </button>
+            <select value={reviewCount} onChange={(e) => setReviewCount(Number(e.target.value))} aria-label="How many games to review" disabled={reviewing}>
+              {REVIEW_COUNTS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </span>
         )}
       </div>
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Opponent</th>
-            <th>Result</th>
-            <th className="hide-narrow">Opening</th>
+            <SortHeader by="date" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} title="Date">
+              Date
+            </SortHeader>
+            <SortHeader by="opponent" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} title="Opponent rating">
+              Opponent
+            </SortHeader>
+            <SortHeader by="result" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} title="Result: wins, draws, losses">
+              Result
+            </SortHeader>
+            <SortHeader by="opening" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} className="hide-narrow" title="Opening, alphabetically">
+              Opening
+            </SortHeader>
             {showStats && (
               <>
-                <th className="num" title="Brilliant / great moves">
+                <SortHeader by="brilliant" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} className="num" title="Brilliant and great moves">
                   !! / !
-                </th>
-                <th className="num" title="Accuracy">Acc.</th>
-                <th className="num hide-narrow" title="Estimated performance rating">
+                </SortHeader>
+                <SortHeader by="accuracy" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} className="num" title="Accuracy">
+                  Acc.
+                </SortHeader>
+                <SortHeader by="performance" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} className="num hide-narrow" title="Estimated performance rating">
                   Perf.
-                </th>
+                </SortHeader>
               </>
             )}
           </tr>
@@ -130,6 +139,11 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
             const score = scoreFor(g.result, color);
             const label = score === null ? g.result : RESULT_LABEL[score as 0 | 0.5 | 1];
             const s = stats.get(g.id);
+            const dash = (
+              <span className="muted" title={NOT_REVIEWED}>
+                —
+              </span>
+            );
             return (
               <tr key={g.id} onClick={() => onOpen(g)} className="clickable">
                 <td className="nowrap">{g.date ?? "?"}</td>
@@ -152,11 +166,11 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
                           <span className="count-brilliant">{s.brilliant}</span> / <span className="count-great">{s.great}</span>
                         </>
                       ) : (
-                        "—"
+                        dash
                       )}
                     </td>
-                    <td className="num">{s ? `${s.accuracy}%` : "—"}</td>
-                    <td className="num hide-narrow">{s?.performance || "—"}</td>
+                    <td className="num">{s ? `${s.accuracy}%` : dash}</td>
+                    <td className="num hide-narrow">{s?.performance || dash}</td>
                   </>
                 )}
               </tr>

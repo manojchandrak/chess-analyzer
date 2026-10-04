@@ -162,9 +162,9 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
     if (analyzed.length > 50) log(`Review: ${analyzed.length.toLocaleString()} Lichess-analyzed games included.`);
   }
 
-  async function runReview() {
-    if (!engine) return;
-    const todo = filtered.filter((g) => g.playerColor && !reviews.has(g.id)).slice(0, reviewCount);
+  /** Reviews these games one after another with Stockfish; each result appears in the table as it finishes. */
+  async function reviewGames(todo: GameRecord[]) {
+    if (!engine || todo.length === 0) return;
     setReviewError(null);
     try {
       for (let i = 0; i < todo.length; i++) {
@@ -179,6 +179,7 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
     }
   }
 
+  const runReview = () => reviewGames(filtered.filter((g) => g.playerColor && !reviews.has(g.id)).slice(0, reviewCount));
   const unreviewed = filtered.filter((g) => g.playerColor && !reviews.has(g.id)).length;
 
   return (
@@ -316,7 +317,7 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
 
           <section>
             <h2>Games</h2>
-            <GameList games={filtered} onOpen={onOpenGame} />
+            <GameList games={filtered} onOpen={onOpenGame} onReview={engine ? reviewGames : undefined} reviewing={!!reviewProgress} />
           </section>
         </>
       )}
