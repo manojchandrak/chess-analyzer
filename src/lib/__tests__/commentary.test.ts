@@ -4,6 +4,7 @@ import { buildCommentary, describeMove, edgeOf, evalText } from "../commentary";
 import type { EngineEval } from "../engine";
 import type { GameRecord } from "../games";
 import { parseRecord, type ParsedMove } from "../pgn";
+import type { PersonaId } from "../personas";
 
 const game = (moves: string) => parseRecord({ white: "Ann", black: "Bo", whiteElo: 1800, blackElo: null, result: "1-0", moves } as GameRecord);
 const ev = (cp: number, extra: Partial<EngineEval> = {}): EngineEval => ({ cp, mate: null, ...extra });
@@ -93,5 +94,32 @@ describe("buildCommentary", () => {
     const out = buildCommentary(g, analyzeWithEvals(g, evals));
     expect(out[1]).toMatch(/engine|Best|Exactly/);
     expect(out[1]).not.toContain("advantage");
+  });
+});
+
+describe("commentator personas", () => {
+  const g = game("e4 a6");
+  const evals = [
+    ev(20, { best: "e2e4" }),
+    ev(-30, { best: "e7e5", alternatives: [{ uci: "e7e5", cp: -30, mate: null }, { uci: "d7d5", cp: -40, mate: null }, { uci: "a7a6", cp: -300, mate: null }] }),
+    ev(600),
+  ];
+  const analysis = analyzeWithEvals(g, evals);
+  const blunder = (persona: PersonaId) => buildCommentary(g, analysis, { persona })[2];
+
+  it("speaks in the persona's own words, with the same facts", () => {
+    expect(blunder("analyst")).toContain("A blunder! The evaluation swings from +0.3 to +6.0.");
+    expect(blunder("coach")).toContain("Ouch, that one's a blunder");
+    expect(blunder("commentator")).toContain("A blunder! Wow, the evaluation swings");
+    expect(blunder("master")).toContain("A serious blunder. The evaluation collapses");
+    for (const p of ["analyst", "coach", "commentator", "master"] as const) {
+      expect(blunder(p)).toContain("Better options: e5 (+0.3) and d5 (+0.4).");
+      expect(blunder(p)).not.toMatch(/[{}]/);
+    }
+    expect(new Set(("analyst coach commentator master".split(" ") as PersonaId[]).map(blunder)).size).toBe(4);
+  });
+
+  it("defaults to the calm analyst", () => {
+    expect(buildCommentary(g, analysis)[2]).toBe(blunder("analyst"));
   });
 });

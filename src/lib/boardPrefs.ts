@@ -1,6 +1,8 @@
 // Board appearance: piece set and square colors, remembered per browser.
 import { useSyncExternalStore } from "react";
-import { setPreferredVoice } from "./speech";
+import { DEFAULT_PERSONA, isPersona, type PersonaId } from "./personas";
+import { setSpeechStyle } from "./speech";
+import { isAccent, type AccentChoice } from "./voices";
 
 export interface PieceSet {
   id: string;
@@ -45,12 +47,16 @@ export interface BoardPrefs {
   speak: boolean;
   /** Also read the commentary on each move aloud. */
   speakCommentary: boolean;
-  /** Chosen speech voice (voiceURI); null = best available. */
+  /** Chosen speech voice (voiceURI); null = the best voice for the persona and accent. */
   voice: string | null;
+  /** The commentator: sets the wording of the commentary and the voice style. */
+  persona: PersonaId;
+  /** The accent to speak with; "auto" follows the persona. */
+  accent: AccentChoice;
 }
 
 const KEY = "chess-analyzer:board";
-const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false, speakCommentary: false, voice: null };
+const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false, speakCommentary: false, voice: null, persona: DEFAULT_PERSONA, accent: "auto" };
 const listeners = new Set<() => void>();
 
 function read(): BoardPrefs {
@@ -62,6 +68,8 @@ function read(): BoardPrefs {
       speak: saved.speak === true,
       speakCommentary: saved.speakCommentary === true,
       voice: typeof saved.voice === "string" ? saved.voice : null,
+      persona: isPersona(saved.persona) ? saved.persona : DEFAULT_PERSONA,
+      accent: saved.accent === "auto" || isAccent(saved.accent) ? saved.accent : "auto",
     };
   } catch {
     return DEFAULTS;
@@ -69,11 +77,12 @@ function read(): BoardPrefs {
 }
 
 let current = read();
-setPreferredVoice(current.voice);
+const applySpeechStyle = () => setSpeechStyle({ voiceURI: current.voice, accent: current.accent, persona: current.persona });
+applySpeechStyle();
 
 export function setBoardPrefs(change: Partial<BoardPrefs>): void {
   current = { ...current, ...change };
-  setPreferredVoice(current.voice);
+  applySpeechStyle();
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {

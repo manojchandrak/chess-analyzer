@@ -2,8 +2,8 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
 import { commentaryToSpeech, isSpeaking, sanToSpeech, say, speechSupported, stopSpeaking, subscribeSpeaking } from "../lib/speech";
 
-/** Reads each newly shown move aloud while the speaker is on, and the commentary on it while
- * the commentary speaker is on (the move first, then what is said about it). */
+/** Reads each newly shown move aloud while the moves speaker is on. While the commentary speaker is on
+ * it reads the move and then the commentary ("D 5. Black stakes a claim in the center. A standard book move."). */
 export function useSpokenMoves(ply: number, san: string | null, commentary: string | null) {
   const { speak, speakCommentary } = useBoardPrefs();
   const speaking = useSyncExternalStore(subscribeSpeaking, isSpeaking);
@@ -23,7 +23,8 @@ export function useSpokenMoves(ply: number, san: string | null, commentary: stri
     if ((!speak && !speakCommentary) || ply === spoken.current) return;
     spoken.current = ply;
     const parts: string[] = [];
-    if (speak && latest.current.san) parts.push(sanToSpeech(latest.current.san));
+    // The move is always read first; the commentary follows it when that speaker is on.
+    if (latest.current.san) parts.push(sanToSpeech(latest.current.san));
     if (speakCommentary && latest.current.commentary) parts.push(commentaryToSpeech(latest.current.commentary));
     if (parts.length) say(parts.join(". "));
   }, [ply, speak, speakCommentary]);
@@ -38,8 +39,8 @@ export function useSpokenMoves(ply: number, san: string | null, commentary: stri
     if (speakCommentary) {
       stopSpeaking();
     } else if (commentary) {
-      // Read the comment on the move that is on screen right away, as feedback.
-      say(commentaryToSpeech(commentary));
+      // Read the move that is on screen and its comment right away, as feedback.
+      say([san ? sanToSpeech(san) : "", commentaryToSpeech(commentary)].filter(Boolean).join(". "));
     }
     spoken.current = ply;
     setBoardPrefs({ speakCommentary: !speakCommentary });

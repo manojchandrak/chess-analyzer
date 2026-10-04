@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAutoplay } from "../hooks/useAutoplay";
+import { useBoardPrefs } from "../lib/boardPrefs";
 import { useLiveEval } from "../hooks/useLiveEval";
 import { useSpokenMoves } from "../hooks/useSpokenMoves";
 import { formatScore } from "../lib/accuracy";
@@ -80,7 +81,8 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const fen = showBefore && current ? current.fenBefore : current ? current.fenAfter : (game.moves[0]?.fenBefore ?? START_FEN);
   const openings = useMemo(() => (openingDb ? openingsAlong(game.moves, openingDb) : null), [openingDb, game]);
   const opening = openings?.perPly[ply] ?? null;
-  const commentary = useMemo(() => buildCommentary(game, analysis, { openings }), [game, analysis, openings]);
+  const { persona } = useBoardPrefs();
+  const commentary = useMemo(() => buildCommentary(game, analysis, { openings, persona }), [game, analysis, openings, persona]);
 
   const { live, error: liveError, retry: retryLive } = useLiveEval(engineOn, fen);
   const { speak, speakCommentary, speaking, supported: speechOk, toggleMoves: toggleSpeak, toggleCommentary: toggleSpeakCommentary } = useSpokenMoves(ply, current?.san ?? null, commentary[ply] ?? null);
@@ -302,7 +304,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 onClick={toggleSpeakCommentary}
                 aria-pressed={speakCommentary}
                 aria-label="Read commentary aloud"
-                title={speakCommentary ? "Stop reading the commentary aloud" : "Read the commentary aloud, after each move"}
+                title={speakCommentary ? "Stop reading the commentary aloud" : "Read each move and its commentary aloud"}
               >
                 🗣
               </button>
