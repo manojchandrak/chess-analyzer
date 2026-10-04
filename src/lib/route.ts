@@ -1,7 +1,7 @@
 // The page's state in the URL hash, so a tab, a legend or a game at a given move can be
 // shared as a link: "#/legends/morphy", "#/mine?lichess=name", "#/mine?g=lichess:abc123&ply=14".
 
-export type Tab = "mine" | "legends" | "pgn";
+export type Tab = "mine" | "legends" | "pgn" | "drills";
 
 export interface Route {
   tab: Tab;
@@ -13,7 +13,7 @@ export interface Route {
   ply?: number;
 }
 
-const TABS: Tab[] = ["mine", "legends", "pgn"];
+const TABS: Tab[] = ["mine", "legends", "pgn", "drills"];
 
 export function parseHash(hash: string): Route {
   const [path, query = ""] = hash.replace(/^#\/?/, "").split("?");

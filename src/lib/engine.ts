@@ -330,3 +330,12 @@ export function getLiveEngine(fresh = false): LiveEngine {
   live ??= new LiveEngine();
   return live;
 }
+
+let drill: StockfishEngine | null = null;
+
+/** A separate engine for drills, so a running review of your games doesn't
+ * hold up the opponent's replies. Created the first time a drill needs it. */
+export function getDrillEngine(): StockfishEngine {
+  drill ??= new StockfishEngine();
+  return drill;
+}

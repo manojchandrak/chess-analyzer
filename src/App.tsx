@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
+import { Drills } from "./components/Drills";
 import { GameViewer } from "./components/GameViewer";
 import { Legends } from "./components/Legends";
 import { MyGames } from "./components/MyGames";
@@ -25,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "mine", label: "My games" },
   { id: "legends", label: "Legends" },
   { id: "pgn", label: "Analyze a game" },
+  { id: "drills", label: "Drills" },
 ];
 
 /** Loads the game a shared link points at: a Lichess game by id, or one of a legend's games. */
@@ -142,7 +144,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Chess Game Analyzer</h1>
-        <p>Load your Lichess and Chess.com games to see your playing style and where to improve, or study how the legends played.</p>
+        <p>Load your Lichess and Chess.com games to see your playing style and where to improve, study how the legends played, or train openings, middlegames and endgames with drills.</p>
         <nav className="tabs" role="tablist">
           {TABS.map((t) => (
             <button
@@ -202,6 +204,10 @@ function App() {
         <h3 className="or-heading">Or paste a PGN</h3>
         <PgnInput pgnText={pgnText} onChange={setPgnText} depth={depth} onDepthChange={setDepth} onAnalyze={analyzePgn} disabled={!engine} />
         {pgnError && <p className="error-message">{pgnError}</p>}
+      </div>
+
+      <div hidden={!!viewing || tab !== "drills"}>
+        <Drills />
       </div>
 
       <footer className="app-footer muted small">

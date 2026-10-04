@@ -40,38 +40,38 @@ function Puzzle({ puzzle, onSolved }: PuzzleProps) {
   }
 
   return (
-    <div className="drill-body">
-      <div className="drill-board">
+    <div className="puzzle-body">
+      <div className="puzzle-board">
         <Board fen={puzzle.fen} flipped={puzzle.color === "b"} onSquareClick={onSquare} selected={selected} targets={targets} arrows={answerArrow ? [{ ...answerArrow, color: "#81b64c", opacity: 0.9 }] : []} />
       </div>
-      <div className="drill-info">
+      <div className="puzzle-info">
         <p>
           <strong>{puzzle.color === "w" ? "White" : "Black"} to move.</strong> In your game{puzzle.opponent ? ` against ${puzzle.opponent}` : ""}
           {puzzle.date ? ` (${puzzle.date})` : ""} you played <strong>{puzzle.played}</strong>, a {puzzle.quality}. Find the better move.
         </p>
-        <form className="drill-form" onSubmit={submitTyped}>
-          <label className="muted small" htmlFor="drill-move">
+        <form className="puzzle-form" onSubmit={submitTyped}>
+          <label className="muted small" htmlFor="puzzle-move">
             Or type it (e.g. Nf3, O-O, exd5)
           </label>
-          <div className="drill-form-row">
-            <input id="drill-move" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" disabled={done} />
+          <div className="puzzle-form-row">
+            <input id="puzzle-move" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" disabled={done} />
             <button className="btn btn-ghost" disabled={done || !typed.trim()}>
               Check
             </button>
           </div>
         </form>
-        <div role="status" className="drill-feedback">
+        <div role="status" className="puzzle-feedback">
           {feedback?.kind === "correct" && (
-            <p className="drill-ok">
+            <p className="puzzle-ok">
               Correct: <strong>{puzzle.best}</strong> was the move.
             </p>
           )}
           {feedback?.kind === "wrong" && (
-            <p className="drill-wrong">
+            <p className="puzzle-wrong">
               {feedback.san} isn't the best move here. Try again, or show the answer.
             </p>
           )}
-          {feedback?.kind === "illegal" && <p className="drill-wrong">That isn't a legal move in this position.</p>}
+          {feedback?.kind === "illegal" && <p className="puzzle-wrong">That isn't a legal move in this position.</p>}
           {feedback?.kind === "shown" && (
             <p>
               The best move was <strong>{puzzle.best}</strong>.
@@ -100,8 +100,8 @@ export function PuzzleDrill({ puzzles }: { puzzles: PuzzleItem[] }) {
   const prev = () => setIndex((i - 1 + puzzles.length) % puzzles.length);
 
   return (
-    <div className="card drill">
-      <div className="drill-head">
+    <div className="card puzzle">
+      <div className="puzzle-head">
         <h3>Practice your mistakes</h3>
         <span className="muted small">
           Puzzle {i + 1} of {puzzles.length} · {solvedHere} solved{solved.has(puzzle.id) ? " · this one solved" : ""}
@@ -118,7 +118,7 @@ export function PuzzleDrill({ puzzles }: { puzzles: PuzzleItem[] }) {
           })
         }
       />
-      <div className="drill-nav">
+      <div className="puzzle-nav">
         <button className="btn btn-ghost" onClick={prev}>
           ← Previous
         </button>
