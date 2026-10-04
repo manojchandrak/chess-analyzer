@@ -302,7 +302,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
                 onClick={toggleSpeakCommentary}
                 aria-pressed={speakCommentary}
                 aria-label="Read commentary aloud"
-                title={speakCommentary ? "Stop reading the commentary aloud" : "Read the commentary aloud, after each move"}
+                title={speakCommentary ? "Stop reading the commentary aloud" : "Read each move and its commentary aloud"}
               >
                 🗣
               </button>
