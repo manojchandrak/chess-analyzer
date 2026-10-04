@@ -659,3 +659,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .explore-empty { margin: 4px 8px; }
 .fen-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .fen-form input { flex: 1; min-width: 220px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+
+/* ---------- Commentator and accent ---------- */
+.voice-settings { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: center; width: 100%; }
+.voice-settings label { display: inline-flex; align-items: center; gap: 8px; }
+.voice-note { flex-basis: 100%; margin: 0; text-align: center; }

@@ -1,5 +1,5 @@
-// Reads moves aloud with the browser's built-in speech synthesis, using the most
-// natural-sounding English voice the device offers (or the one the viewer picked).
+// Reads moves and commentary aloud with the browser's built-in speech synthesis, using the most
+// natural-sounding voice the device offers for the chosen persona and accent (see voices.ts).
 
 const PIECE: Record<string, string> = { K: "King", Q: "Queen", R: "Rook", B: "Bishop", N: "Knight" };
 
@@ -47,36 +47,23 @@ export function speechSupported(): boolean {
 }
 
 // Neural/"natural" voices sound far more human than the classic system ones.
-const QUALITY: [RegExp, number][] = [
-  [/natural|neural|online/i, 50], // Microsoft Edge "… Online (Natural)"
-  [/premium|enhanced|siri/i, 40], // Apple downloadable voices
-  [/google/i, 30], // Chrome's Google voices
-  [/\b(ava|samantha|allison|susan|serena|karen|moira|tessa|daniel|aria|jenny|guy|libby|sonia|emma|brian)\b/i, 15],
-  [/^(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i, -20], // Apple's Eloquence voices sound synthetic
-  [/compact|espeak|zira|david|mark/i, -40],
-];
+import { chooseVoice, englishVoices as pickEnglish, type AccentChoice, type VoiceChoice } from "./voices.ts";
+import { personaOf, type PersonaId } from "./personas.ts";
 
-// Apple's novelty voices (a bleating sheep, a pipe organ…) aren't offered at all.
-const NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|junior|ralph|kathy|fred)\b/i;
+let cachedVoices: SpeechSynthesisVoice[] = [];
 
-function score(v: SpeechSynthesisVoice): number {
-  let s = 0;
-  if (/^en[-_]US/i.test(v.lang)) s += 10;
-  else if (/^en[-_](GB|AU|CA|IE|NZ)/i.test(v.lang)) s += 8;
-  else if (/^en/i.test(v.lang)) s += 5;
-  else s -= 100;
-  for (const [re, pts] of QUALITY) if (re.test(v.name)) s += pts;
-  if (v.default) s += 2;
-  return s;
+/** Every voice the device offers. The same array is returned until the list changes, so it can be
+ * used as a React snapshot. */
+export function allVoices(): SpeechSynthesisVoice[] {
+  if (!speechSupported()) return cachedVoices;
+  const list = window.speechSynthesis.getVoices();
+  if (list.length !== cachedVoices.length || list.some((v, i) => v !== cachedVoices[i])) cachedVoices = list;
+  return cachedVoices;
 }
 
 /** English voices, best-sounding first. */
 export function englishVoices(): SpeechSynthesisVoice[] {
-  if (!speechSupported()) return [];
-  return window.speechSynthesis
-    .getVoices()
-    .filter((v) => /^en/i.test(v.lang) && !NOVELTY.test(v.name))
-    .sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));
+  return pickEnglish(allVoices());
 }
 
 /** Calls back whenever the browser's voice list changes (it loads asynchronously). */
@@ -86,11 +73,17 @@ export function onVoicesChanged(cb: () => void): () => void {
   return () => window.speechSynthesis.removeEventListener("voiceschanged", cb);
 }
 
-let preferredVoice: string | null = null;
+// How the commentary should sound: a specific voice if the viewer picked one, otherwise the accent and
+// the persona decide (see chooseVoice).
+let style: { voiceURI: string | null; accent: AccentChoice; persona: PersonaId } = { voiceURI: null, accent: "auto", persona: "analyst" };
 
-/** The voice to use (by voiceURI); null picks the best available automatically. */
-export function setPreferredVoice(uri: string | null): void {
-  preferredVoice = uri;
+export function setSpeechStyle(next: Partial<typeof style>): void {
+  style = { ...style, ...next };
+}
+
+/** The voice that would be used right now, and whether the requested accent was unavailable. */
+export function currentVoice(): VoiceChoice<SpeechSynthesisVoice> {
+  return chooseVoice(allVoices(), style);
 }
 
 // Whether something is being spoken right now, so autoplay can wait for the end of a comment.
@@ -110,16 +103,17 @@ export const isSpeaking = () => speaking;
 
 export function say(text: string): void {
   if (!speechSupported()) return;
-  const voices = englishVoices();
-  const voice = voices.find((v) => v.voiceURI === preferredVoice) ?? voices[0];
+  const { voice } = currentVoice();
+  const persona = personaOf(style.persona);
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   if (voice) {
     u.voice = voice;
-    u.lang = voice.lang;
+    // A multilingual voice (listed as German, French…) reads English best when told it is English.
+    u.lang = /^en/i.test(voice.lang) ? voice.lang : "en-US";
   }
-  u.rate = 0.95;
-  u.pitch = 1;
+  u.rate = persona.rate;
+  u.pitch = persona.pitch;
   // A newer utterance replaces this one, so only the latest one may clear the "speaking" flag.
   const id = ++utteranceId;
   const done = () => {

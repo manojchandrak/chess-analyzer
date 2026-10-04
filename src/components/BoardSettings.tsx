@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { BOARD_THEMES, PIECE_SETS, setBoardPrefs, useBoardPrefs } from "../lib/boardPrefs";
-import { englishVoices, onVoicesChanged, say, speechSupported } from "../lib/speech";
+import { PERSONAS, personaOf } from "../lib/personas";
+import { allVoices, currentVoice, onVoicesChanged, say, speechSupported } from "../lib/speech";
+import { accentLabel, availableAccents, isNaturalVoice, shortVoiceName, voicesForAccent } from "../lib/voices";
 
 export function BoardSettings() {
-  const { pieces, theme, voice } = useBoardPrefs();
-  const [voices, setVoices] = useState(englishVoices);
+  const { pieces, theme, voice, persona, accent } = useBoardPrefs();
+  // Browsers load their voice list asynchronously, so follow it as it arrives.
+  const voices = useSyncExternalStore(onVoicesChanged, allVoices);
 
-  // Browsers load their voice list asynchronously.
-  useEffect(() => onVoicesChanged(() => setVoices(englishVoices())), []);
+  const accents = availableAccents(voices);
+  const { voice: using, accent: usedAccent, fellBack } = currentVoice();
+  const accentVoices = usedAccent ? voicesForAccent(voices, usedAccent) : [];
+  const chosen = personaOf(persona);
 
   return (
     <div className="board-settings">
@@ -36,20 +41,51 @@ export function BoardSettings() {
         ))}
       </div>
       {speechSupported() && voices.length > 0 && (
-        <label className="voice-picker">
-          Voice
-          <select value={voice ?? ""} onChange={(e) => setBoardPrefs({ voice: e.target.value || null })}>
-            <option value="">Automatic ({voices[0].name.replace(/^Microsoft /, "").replace(/ Online \(Natural\)/, "")})</option>
-            {voices.map((v) => (
-              <option key={v.voiceURI} value={v.voiceURI}>
-                {v.name} ({v.lang})
-              </option>
-            ))}
-          </select>
-          <button type="button" className="btn btn-ghost" onClick={() => say("Knight takes E 5, check")} title="Hear this voice">
-            ▶ Test
-          </button>
-        </label>
+        <div className="voice-settings">
+          <label>
+            Commentator
+            <select value={persona} onChange={(e) => setBoardPrefs({ persona: e.target.value as typeof persona })} title={chosen.description}>
+              {PERSONAS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Accent
+            <select value={accent} onChange={(e) => setBoardPrefs({ accent: e.target.value as typeof accent, voice: null })}>
+              <option value="auto">Automatic ({accentLabel(personaOf(persona).accent as never)})</option>
+              {accents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                  {a.count > 1 ? ` (${a.count} voices)` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="voice-picker">
+            Voice
+            <select value={voice ?? ""} onChange={(e) => setBoardPrefs({ voice: e.target.value || null })}>
+              <option value="">Best for this commentator{using ? ` (${shortVoiceName(using.name)})` : ""}</option>
+              {accentVoices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={() => say(chosen.sample)} title="Hear this commentator and voice">
+              ▶ Hear
+            </button>
+          </label>
+          <p className="muted small voice-note">
+            {chosen.description}
+            {using ? ` Speaking with ${shortVoiceName(using.name)}${usedAccent ? ` (${accentLabel(usedAccent)})` : ""}.` : ""}
+            {fellBack ? " Your device has no voice for the accent you chose, so the best available one is used." : ""}
+            {usedAccent === "eu" ? " European voices read the commentary in English with a European accent; quality varies." : ""}
+            {using && !isNaturalVoice(using) ? " This voice may sound robotic: for more natural ones, install a premium or natural voice (macOS: System Settings, Accessibility, Spoken Content; Windows: use Microsoft Edge, which has Natural voices)." : ""}
+          </p>
+        </div>
       )}
     </div>
   );

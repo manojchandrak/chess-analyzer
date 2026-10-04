@@ -71,12 +71,21 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 - **Spoken moves and autoplay**: turn on 🔈 to hear each move read aloud
   ("Knight takes E 5, check") in the most natural English voice your device
   offers, or one you pick and test from the Voice menu; ⏯ plays through the game automatically. Uses your browser's built-in speech.
-- **Commentary read aloud**: the 🗣 button reads each move's commentary after the move
-  is shown (the 🔈 button still reads just the move; switch both on to hear the move
-  and then the comment). Moves in the text are read as moves ("Qf6" as "Queen F 6"),
+- **Commentary read aloud**: the 🗣 button reads each move and then its commentary, for
+  example "D 5. Black stakes a claim in the center. A standard book move." (the 🔈 button
+  still reads just the move). Moves in the text are read as moves ("Qf6" as "Queen F 6"),
   evaluations as numbers ("+1.3" as "plus 1 point 3") and opening codes are skipped.
   It uses the same voice as the moves, and autoplay waits for a comment to finish
   before it moves on.
+- **Commentators and accents**: under the board, pick a **Commentator** (Calm analyst,
+  Friendly coach, Excited commentator or Old-school master). The persona changes how the
+  commentary is worded and how it sounds (speed, pitch, and a voice that suits it); they are
+  character types, not impersonations of real people. Pick an **Accent** too (American,
+  British, Australian, Irish, Indian, South African, Canadian, New Zealand, or European, which
+  reads the English with a European accent). Only the accents your device has voices for are
+  listed. The page uses the most natural-sounding voice available in that accent, and tells
+  you if it is a robotic one and how to get more natural voices (for example Microsoft
+  Edge's "Natural" voices, or premium voices on macOS). **▶ Hear** previews the choice.
 - **Sort games** (yours or a legend's) by most brilliant or great moves,
   accuracy, game performance (estimated rating), fewest/most blunders,
   strongest opponent, date or length. Every review, wherever it runs, records
