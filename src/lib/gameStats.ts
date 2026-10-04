@@ -48,6 +48,9 @@ export function statsFromAnalysis(analysis: AnalysisResult, color: "w" | "b"): G
 
 let pending: Map<string, GameStats> | null = null;
 
+/** Whether numbers are already saved (or about to be saved) for a game. */
+export const hasGameStats = (gameId: string): boolean => stats.has(gameId) || !!pending?.has(gameId);
+
 /** Records a game's stats. Updates are batched (a review of thousands of games
  * saves and redraws a few times a second, not once per game). */
 export function setGameStats(gameId: string, value: GameStats): void {

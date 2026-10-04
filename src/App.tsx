@@ -209,7 +209,7 @@ function App() {
         <Legends selectedId={legendId} onSelect={setLegendId} onOpenGame={openRecord} userTraits={userTraits} />
       </div>
       <div hidden={!!viewing || tab !== "pgn"}>
-        <RecentGames onAnalyze={(g) => openRecord(g)} />
+        <RecentGames engine={engine} onAnalyze={(g) => openRecord(g)} />
         <h3 className="or-heading">Or start from a position</h3>
         <FenInput onStart={startFromFen} />
         <h3 className="or-heading">Or paste a PGN</h3>
