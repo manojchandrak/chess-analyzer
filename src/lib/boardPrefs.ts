@@ -43,12 +43,14 @@ export interface BoardPrefs {
   theme: string;
   /** Read moves aloud as they are played. */
   speak: boolean;
+  /** Also read the commentary on each move aloud. */
+  speakCommentary: boolean;
   /** Chosen speech voice (voiceURI); null = best available. */
   voice: string | null;
 }
 
 const KEY = "chess-analyzer:board";
-const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false, voice: null };
+const DEFAULTS: BoardPrefs = { pieces: "cburnett", theme: "brown", speak: false, speakCommentary: false, voice: null };
 const listeners = new Set<() => void>();
 
 function read(): BoardPrefs {
@@ -58,6 +60,7 @@ function read(): BoardPrefs {
       pieces: PIECE_SETS.some((p) => p.id === saved.pieces) ? saved.pieces! : DEFAULTS.pieces,
       theme: BOARD_THEMES.some((t) => t.id === saved.theme) ? saved.theme! : DEFAULTS.theme,
       speak: saved.speak === true,
+      speakCommentary: saved.speakCommentary === true,
       voice: typeof saved.voice === "string" ? saved.voice : null,
     };
   } catch {

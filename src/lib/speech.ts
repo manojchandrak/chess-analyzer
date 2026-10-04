@@ -22,6 +22,26 @@ export function sanToSpeech(san: string): string {
   return `${who}${disambiguation}${action}${square(to)}${promotion}${suffix}`.trim();
 }
 
+/** "+1.3" → "plus 1 point 3", "-0.4" → "minus 0 point 4", "+6.0" → "plus 6". */
+function evalToSpeech(sign: string, whole: string, frac: string): string {
+  const word = sign === "-" ? "minus" : "plus";
+  return frac && frac !== "0" ? `${word} ${whole} point ${frac}` : `${word} ${whole}`;
+}
+
+// A move written in algebraic notation inside a sentence: "Qf6", "exd5", "Nxe5+", "O-O", "e8=Q".
+const SAN_IN_TEXT = /(?<![\w-])(O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8][+#]?|[a-h]x[a-h][1-8](?:=[QRBN])?[+#]?|[a-h][1-8](?:=[QRBN])?[+#]?)(?![\w-])/g;
+
+/** Makes the commentary sound right when spoken: moves read like moves ("Qf6" → "Queen F 6"),
+ * evaluations as numbers ("(+1.3)" → "plus 1 point 3"), and the opening code is left out. */
+export function commentaryToSpeech(text: string): string {
+  return text
+    .replace(/\s*\([A-E]\d{2}\)/g, "") // "(B20)" opening codes aren't worth reading
+    .replace(/\(?([+-])(\d+)\.(\d)\)?/g, (_, sign: string, whole: string, frac: string) => evalToSpeech(sign, whole, frac))
+    .replace(SAN_IN_TEXT, (san) => sanToSpeech(san))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
@@ -73,6 +93,21 @@ export function setPreferredVoice(uri: string | null): void {
   preferredVoice = uri;
 }
 
+// Whether something is being spoken right now, so autoplay can wait for the end of a comment.
+let speaking = false;
+let utteranceId = 0;
+const speakingListeners = new Set<() => void>();
+function setSpeaking(value: boolean) {
+  if (speaking === value) return;
+  speaking = value;
+  speakingListeners.forEach((l) => l());
+}
+export const subscribeSpeaking = (listener: () => void) => {
+  speakingListeners.add(listener);
+  return () => speakingListeners.delete(listener);
+};
+export const isSpeaking = () => speaking;
+
 export function say(text: string): void {
   if (!speechSupported()) return;
   const voices = englishVoices();
@@ -85,9 +120,20 @@ export function say(text: string): void {
   }
   u.rate = 0.95;
   u.pitch = 1;
+  // A newer utterance replaces this one, so only the latest one may clear the "speaking" flag.
+  const id = ++utteranceId;
+  const done = () => {
+    if (id === utteranceId) setSpeaking(false);
+  };
+  u.onend = done;
+  u.onerror = done;
+  setSpeaking(true);
   window.speechSynthesis.speak(u);
 }
 
 export function stopSpeaking(): void {
-  if (speechSupported()) window.speechSynthesis.cancel();
+  if (!speechSupported()) return;
+  utteranceId++;
+  window.speechSynthesis.cancel();
+  setSpeaking(false);
 }
