@@ -5,6 +5,7 @@
 import { Chess } from "chess.js";
 import type { AnalysisResult, MoveAnalysis, Phase } from "./analyze.ts";
 import type { OpeningName } from "./openings.ts";
+import { personaOf, type PersonaId } from "./personas.ts";
 import type { ParsedGame, ParsedMove } from "./pgn.ts";
 
 const NAMES: Record<string, string> = { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
@@ -92,46 +93,50 @@ export function describeMove(move: ParsedMove): string | null {
 
 const altList = (alts: { san: string; evalWhite: number }[]) => alts.map((a) => `${a.san} (${evalText(a.evalWhite)})`).join(" and ");
 
-/** The engine's verdict on the move, in words. Empty when there was no engine review. */
-function qualitySentence(m: MoveAnalysis, prevEvalWhite: number): string {
-  const who = side(m.color);
+/** The engine's verdict on the move, in the persona's words. Empty when there was no engine review. */
+function qualitySentence(m: MoveAnalysis, prevEvalWhite: number, persona: PersonaId): string {
+  const P = personaOf(persona).phrases;
+  const opp = side(m.color === "w" ? "b" : "w");
   const before = evalText(prevEvalWhite);
   const after = evalText(m.evalAfterWhite);
   const better = m.alternatives.filter((a) => !a.played).slice(0, 2);
   const fix = better.length ? ` Better options: ${altList(better)}.` : m.bestSan ? ` ${m.bestSan} was better.` : "";
+  const fill = (t: string) => t.replace("{before}", before).replace("{after}", after).replace("{best}", m.bestSan ?? "").replace("{opp}", opp).replace("{fix}", fix);
 
   switch (m.cls) {
     case "brilliant":
-      return pick(["A brilliant move! The material it gives up is more than repaid by the position.", "Brilliant! A sacrifice that the engine confirms is the strongest continuation."], m.ply);
+      return pick(P.brilliant, m.ply);
     case "great":
-      return pick(["A great move: the only one that keeps the position under control.", "Great find. Most other moves here would let the advantage slip."], m.ply);
+      return pick(P.great, m.ply);
     case "best":
-      return pick(["The engine's top choice.", "Best by the engine.", "Exactly what the engine would play."], m.ply);
+      return pick(P.best, m.ply);
     case "excellent":
-      return pick(["An excellent move, almost as good as the engine's first choice.", "Excellent: very close to the best move."], m.ply);
+      return pick(P.excellent, m.ply);
     case "good":
-      return m.bestSan ? `A good move, though ${m.bestSan} was a little more precise.` : "A good, sound move.";
+      return m.bestSan ? fill(P.goodBest) : P.good;
     case "book":
-      return "A standard book move.";
+      return P.book;
     case "inaccuracy":
-      return `A small inaccuracy.${fix}`;
+      return fill(P.inaccuracy);
     case "mistake":
-      return `A mistake: the evaluation drops from ${before} to ${after}.${fix}`;
+      return fill(P.mistake);
     case "miss":
-      return `A missed chance: ${who === "White" ? "Black" : "White"}'s last move was a mistake, and this does not make the most of it.${fix}`;
+      return fill(P.miss);
     case "blunder":
-      return `A blunder! The evaluation swings from ${before} to ${after}.${fix}`;
+      return fill(P.blunder);
   }
 }
 
 export interface CommentaryOptions {
   /** Opening reached after each ply (index 0 = start) and how many plies are book. */
   openings?: { perPly: (OpeningName | null)[]; bookPlies: number } | null;
+  /** Who is speaking: the wording of the verdicts follows the persona (default: the calm analyst). */
+  persona?: PersonaId;
 }
 
 /** Commentary for every position of a game: index 0 introduces the game, index n comments on move n. */
 export function buildCommentary(game: ParsedGame, analysis: AnalysisResult | null, opts: CommentaryOptions = {}): string[] {
-  const { openings } = opts;
+  const { openings, persona = "analyst" } = opts;
   const out: string[] = [];
 
   const players = `${game.white}${game.whiteElo ? ` (${game.whiteElo})` : ""} played White against ${game.black}${game.blackElo ? ` (${game.blackElo})` : ""}`;
@@ -148,7 +153,7 @@ export function buildCommentary(game: ParsedGame, analysis: AnalysisResult | nul
     if (what) parts.push(what);
 
     if (a) {
-      parts.push(qualitySentence(a, prevEval));
+      parts.push(qualitySentence(a, prevEval, persona));
     }
 
     // Opening theory
