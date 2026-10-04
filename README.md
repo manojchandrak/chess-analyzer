@@ -86,11 +86,15 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   listed. The page uses the most natural-sounding voice available in that accent, and tells
   you if it is a robotic one and how to get more natural voices (for example Microsoft
   Edge's "Natural" voices, or premium voices on macOS). **▶ Hear** previews the choice.
-- **Sort games** (yours or a legend's) by most brilliant or great moves,
-  accuracy, game performance (estimated rating), fewest/most blunders,
-  strongest opponent, date or length. Every review, wherever it runs, records
-  these numbers in your browser; legends' lists have a "Review next 10 games"
-  button to rank more of them.
+- **Sort games** (yours or a legend's): click any column header (date, opponent rating,
+  result, opening, brilliant/great moves, accuracy, performance) to sort by it, and click
+  again to reverse; the Sort menu has presets such as fewest blunders and longest games.
+  The accuracy, brilliant and performance numbers come from an engine review, so a game shows
+  a dash (—) until it has been reviewed. Games Lichess already analyzed fill in on their own;
+  for the rest, use **Review next 10 games** above the table (it follows the order you sorted
+  by, and you can pick 10, 25 or 50), or just open the game. Every review, wherever it runs,
+  records these numbers in your browser. Games without a review are listed after the ranked
+  ones when you sort by a review column.
 - **Drills**: learn the three phases of the game by playing on the board
   (drag a piece, or tap it and then its destination); turn on 🔈 to hear
   each move read aloud.
