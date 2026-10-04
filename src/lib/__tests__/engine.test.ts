@@ -31,7 +31,8 @@ class FakeWorker {
       if (FakeWorker.mode === "crash-on-go") return void queueMicrotask(() => this.emit("error", {}));
       queueMicrotask(() => {
         this.emit("message", "info depth 10 multipv 1 score cp 34 pv e2e4 e7e5");
-        this.emit("message", "info depth 10 multipv 2 score cp -12 pv d2d4");
+        this.emit("message", "info depth 10 multipv 2 score cp -12 pv d2d4 d7d5");
+        this.emit("message", "info depth 10 multipv 3 score cp -40 pv g1f3");
         this.emit("message", "bestmove e2e4 ponder e7e5");
       });
     }
@@ -62,8 +63,23 @@ describe("StockfishEngine", () => {
   it("returns the best move and score, and the second line with MultiPV 2", async () => {
     const engine = new StockfishEngine(1);
     const e = await engine.evaluate("startpos-fen", 10, { multiPv: 2 });
-    expect(e).toEqual({ cp: 34, mate: null, best: "e2e4", second: { cp: -12, mate: null } });
+    expect(e).toMatchObject({ cp: 34, mate: null, best: "e2e4", second: { cp: -12, mate: null } });
+    expect(e.alternatives).toEqual([
+      { uci: "e2e4", cp: 34, mate: null },
+      { uci: "d2d4", cp: -12, mate: null },
+    ]);
     expect(FakeWorker.instances[0].sent).toContain("setoption name MultiPV value 2");
+    engine.terminate();
+  });
+
+  it("returns up to three candidate moves with MultiPV 3, and one without it", async () => {
+    const engine = new StockfishEngine(1);
+    const three = await engine.evaluate("a", 10, { multiPv: 3 });
+    expect(three.alternatives?.map((a) => a.uci)).toEqual(["e2e4", "d2d4", "g1f3"]);
+    expect(FakeWorker.instances[0].sent).toContain("setoption name MultiPV value 3");
+    const one = await engine.evaluate("b", 10);
+    expect(one.alternatives?.map((a) => a.uci)).toEqual(["e2e4"]);
+    expect(one.second).toBeNull();
     engine.terminate();
   });
 

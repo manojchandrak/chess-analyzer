@@ -21,7 +21,10 @@ export function evalComment(evalWhite: number): string {
 
 const tag = (k: string, v: string | number | null | undefined) => (v === null || v === undefined || v === "" ? null : `[${k} "${String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`);
 
-export function annotatedPgn(game: ParsedGame, record: GameRecord | null | undefined, analysis: AnalysisResult | null): string {
+/** Comment text safe to put inside { }: no braces, one line. */
+const cleanComment = (text: string) => text.replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+
+export function annotatedPgn(game: ParsedGame, record: GameRecord | null | undefined, analysis: AnalysisResult | null, commentary?: string[]): string {
   const tags = [
     tag("Event", record?.event ?? "Analysis"),
     tag("Site", record?.url ?? "?"),
@@ -45,7 +48,10 @@ export function annotatedPgn(game: ParsedGame, record: GameRecord | null | undef
     if (nag) text += ` $${nag}`;
     if (a) {
       const best = a.bestSan && a.cls !== "best" && a.cls !== "great" && a.cls !== "brilliant" ? ` Best was ${a.bestSan}.` : "";
-      text += ` {[%eval ${evalComment(a.evalAfterWhite)}]${best}}`;
+      const words = commentary?.[m.ply] ? ` ${cleanComment(commentary[m.ply])}` : best;
+      text += ` {[%eval ${evalComment(a.evalAfterWhite)}]${words}}`;
+    } else if (commentary?.[m.ply]) {
+      text += ` {${cleanComment(commentary[m.ply])}}`;
     }
     parts.push(text);
   });
