@@ -664,3 +664,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .voice-settings { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: center; width: 100%; }
 .voice-settings label { display: inline-flex; align-items: center; gap: 8px; }
 .voice-note { flex-basis: 100%; margin: 0; text-align: center; }
+
+/* ---------- Sortable table headers ---------- */
+.th-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; white-space: nowrap; }
+.th-sort:hover { color: var(--accent); }
+.th-sort-on { color: var(--accent); }
+.th-arrow { font-size: 0.7em; opacity: 0.55; }
+.th-sort-on .th-arrow { opacity: 1; }
+th.num .th-sort { justify-content: flex-end; }
+.review-next { display: inline-flex; gap: 6px; align-items: center; }
