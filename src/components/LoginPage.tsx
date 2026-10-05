@@ -160,6 +160,8 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
           </p>
         )}
 
+        {active === "signup" && <p className="muted small">We keep your email address and username to run your account. Your username and posts are public; your email is not.</p>}
+
         <button className="btn btn-primary" disabled={busy}>
           {busy ? "Please wait…" : active === "login" ? "Log in" : active === "signup" ? "Create account" : active === "forgot" ? "Send reset link" : "Save new password"}
         </button>
