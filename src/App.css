@@ -395,12 +395,20 @@ select, input[type="search"], .field input {
 .stats-grid > div { display: flex; flex-direction: column; }
 .stat { font-size: 1.4rem; font-weight: 700; }
 .stat-label { font-size: 0.8rem; color: var(--text-muted); }
-.tally-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+/* Each table needs about 340px (more with the Acc. column), so a column never gets narrower than that; a table
+   that still doesn't fit (a very narrow screen) scrolls inside its own box instead of running over its neighbour. */
+.tally-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+.tally { min-width: 0; overflow-x: auto; }
 .tally h4 { margin: 0 0 6px; font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
 .tally table, .game-list table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .tally th, .tally td, .game-list th, .game-list td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
 .tally th, .game-list th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 480px) {
+  .tally th, .tally td { padding: 6px 4px; }
+  .tally table { font-size: 0.82rem; }
+  .tally th { font-size: 0.66rem; letter-spacing: 0.02em; }
+}
 .score-bar { display: inline-block; min-width: 48px; padding: 0 4px; border-radius: 4px; background: linear-gradient(90deg, var(--accent-soft) var(--score), transparent var(--score)); }
 
 /* ---------- Game list ---------- */
