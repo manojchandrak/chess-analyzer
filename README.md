@@ -112,7 +112,12 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
     mastered. Progress is saved in your browser.
 - **Analyze a game**: pick one of your recent Lichess or Chess.com games for a
   full review, or paste/drop any PGN. Your own games are reviewed as soon as
-  they open.
+  they open. Choose how many games to load per site (10 to 100). The accuracy,
+  brilliant-move and performance columns fill in on their own: results saved in
+  this browser from earlier visits and Lichess's own analysis appear straight away, and
+  the remaining games are reviewed with Stockfish in the background, newest first, with a
+  progress bar and a Stop button (and "Fill in the rest" to continue). Switch the automatic
+  fill-in off with the toggle if you'd rather review games yourself. Your choices are remembered.
 
 Move labels use expected points (win probability) lost by each move: Best is
 Stockfish's top choice; Great is the only good move (the second-best loses
