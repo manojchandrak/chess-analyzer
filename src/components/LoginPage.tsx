@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../lib/forum/auth-context";
 import type { OAuthProvider } from "../lib/forum/types";
+import { ProviderIcon } from "./ProviderIcon";
 import { LIMITS, validateEmail, validatePassword, validateUsername } from "../lib/forum/validation";
 
 type Mode = "login" | "signup" | "forgot" | "recovery";
@@ -130,6 +131,7 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
           <div className="social-buttons">
             {providers.map((provider) => (
               <button key={provider} type="button" className="btn btn-ghost" disabled={busy} onClick={() => void run(() => backend.signInWithProvider(provider))}>
+                <ProviderIcon provider={provider} />
                 Continue with {PROVIDER_NAMES[provider]}
               </button>
             ))}
