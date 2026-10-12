@@ -34,3 +34,15 @@ describe("isShareable", () => {
     expect(isShareable(null)).toBe(false);
   });
 });
+
+describe("forum routes", () => {
+  it("reads and writes the forum tab, an open thread and the login page", async () => {
+    const { parseHash: parse, buildHash: build } = await import("../route");
+    expect(parse("#/forum")).toEqual({ tab: "forum" });
+    expect(parse("#/forum/abc-123")).toEqual({ tab: "forum", thread: "abc-123" });
+    expect(parse("#/login")).toEqual({ tab: "login" });
+    expect(build({ tab: "forum", thread: "abc 123" })).toBe("#/forum/abc%20123");
+    expect(parse(build({ tab: "forum", thread: "abc 123" }))).toEqual({ tab: "forum", thread: "abc 123" });
+    expect(build({ tab: "mine", thread: "ignored" })).toBe("#/mine");
+  });
+});

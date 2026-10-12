@@ -86,6 +86,13 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   listed. The page uses the most natural-sounding voice available in that accent, and tells
   you if it is a robotic one and how to get more natural voices (for example Microsoft
   Edge's "Natural" voices, or premium voices on macOS). **▶ Hear** previews the choice.
+- **Community (forum) and login**: log in with email and password, Google or GitHub, then start
+  threads and reply in categories for feedback, feature requests, bug reports, chess discussion
+  and help. You can edit and delete your own posts; moderators can delete anything and pin or
+  lock threads. Posting is rate-limited and the access rules live in the database. It runs on
+  Supabase; the tab and the Log in button stay hidden until it is set up, see
+  [docs/forum-setup.md](docs/forum-setup.md). `VITE_FORUM_MOCK=1 npm run dev` tries the screens
+  with an in-memory demo (no account or project needed).
 - **Sort games** (yours or a legend's): click any column header (date, opponent rating,
   result, opening, brilliant/great moves, accuracy, performance) to sort by it, and click
   again to reverse; the Sort menu has presets such as fewest blunders and longest games.

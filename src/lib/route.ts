@@ -1,11 +1,13 @@
-// The page's state in the URL hash, so a tab, a legend or a game at a given move can be
-// shared as a link: "#/legends/morphy", "#/mine?lichess=name", "#/mine?g=lichess:abc123&ply=14".
+// The page's state in the URL hash, so a tab, a legend, a forum thread or a game at a given move can be
+// shared as a link: "#/legends/morphy", "#/forum/<thread id>", "#/mine?g=lichess:abc123&ply=14".
 
-export type Tab = "mine" | "legends" | "pgn" | "drills";
+export type Tab = "mine" | "legends" | "pgn" | "drills" | "forum" | "login";
 
 export interface Route {
   tab: Tab;
   legend?: string;
+  /** The open forum thread's id (on the forum tab). */
+  thread?: string;
   lichess?: string;
   chesscom?: string;
   /** Game id: "lichess:<id>" or a legend game ("morphy-12"). */
@@ -13,14 +15,15 @@ export interface Route {
   ply?: number;
 }
 
-const TABS: Tab[] = ["mine", "legends", "pgn", "drills"];
+const TABS: Tab[] = ["mine", "legends", "pgn", "drills", "forum", "login"];
 
 export function parseHash(hash: string): Route {
   const [path, query = ""] = hash.replace(/^#\/?/, "").split("?");
-  const [tabPart, legend] = path.split("/");
+  const [tabPart, second] = path.split("/");
   const params = new URLSearchParams(query);
   const route: Route = { tab: TABS.includes(tabPart as Tab) ? (tabPart as Tab) : "mine" };
-  if (route.tab === "legends" && legend) route.legend = decodeURIComponent(legend);
+  if (route.tab === "legends" && second) route.legend = decodeURIComponent(second);
+  if (route.tab === "forum" && second) route.thread = decodeURIComponent(second);
   for (const key of ["lichess", "chesscom"] as const) {
     const v = params.get(key)?.trim();
     if (v) route[key] = v;
@@ -40,7 +43,7 @@ export function buildHash(route: Route): string {
     params.set("g", route.game);
     if (route.ply) params.set("ply", String(route.ply));
   }
-  const path = route.tab === "legends" && route.legend ? `legends/${encodeURIComponent(route.legend)}` : route.tab;
+  const path = route.tab === "legends" && route.legend ? `legends/${encodeURIComponent(route.legend)}` : route.tab === "forum" && route.thread ? `forum/${encodeURIComponent(route.thread)}` : route.tab;
   const query = params.toString();
   return `#/${path}${query ? `?${query}` : ""}`;
 }

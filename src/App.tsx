@@ -3,11 +3,15 @@ import "./App.css";
 import { Drills } from "./components/Drills";
 import { GameViewer } from "./components/GameViewer";
 import { Legends } from "./components/Legends";
+import { LoginPage } from "./components/LoginPage";
+import { AccountMenu } from "./components/AccountMenu";
 import { FenInput } from "./components/FenInput";
+import { Forum } from "./components/Forum";
 import { MyGames } from "./components/MyGames";
 import { PgnInput } from "./components/PgnInput";
 import { RecentGames } from "./components/RecentGames";
 import { getEngine } from "./lib/engine";
+import { useAuth } from "./lib/forum/auth-context";
 import type { GameRecord } from "./lib/games";
 import { loadLegendGames, loadLegendIndex, withMoves } from "./lib/legendData";
 import { parsePgn, parseRecord, type ParsedGame } from "./lib/pgn";
@@ -25,11 +29,12 @@ interface Viewing {
   exploreFen?: string;
 }
 
-const TABS: { id: Tab; label: string }[] = [
+const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "mine", label: "My games" },
   { id: "legends", label: "Legends" },
   { id: "pgn", label: "Analyze a game" },
   { id: "drills", label: "Drills" },
+  { id: "forum", label: "Community" },
 ];
 
 /** Loads the game a shared link points at: a Lichess game by id, or one of a legend's games. */
@@ -47,6 +52,19 @@ function App() {
   const [tab, setTab] = useState<Tab>(initial.tab);
   const [viewing, setViewing] = useState<Viewing | null>(null);
   const [legendId, setLegendId] = useState<string | null>(initial.legend ?? null);
+  const [thread, setThread] = useState<string | null>(initial.thread ?? null);
+  const { status: forumStatus, recovering } = useAuth();
+  // The Community tab and Log in button appear once the forum is set up (or while developing, to show the setup steps).
+  const forumAvailable = forumStatus === "ready" || (import.meta.env.DEV && forumStatus === "off");
+  const TABS = ALL_TABS.filter((t) => t.id !== "forum" || forumAvailable);
+  // Following a password-reset link shows the "choose a new password" form, whatever tab was open.
+  const current: Tab = recovering ? "login" : tab;
+  const returnTab = useRef<Tab>("forum");
+  const openLogin = () => {
+    returnTab.current = tab === "login" ? "forum" : tab;
+    setViewing(null);
+    setTab("login");
+  };
   const [userTraits, setUserTraits] = useState<Traits | null>(null);
   const [pgnText, setPgnText] = useState("");
   const [depth, setDepth] = useState(14);
@@ -70,7 +88,7 @@ function App() {
     } catch {
       alert("This game's moves couldn't be read.");
     }
-  }, []);
+  }, [setViewPly]);
 
   // Open the game a shared link points at (once, when the page loads).
   useEffect(() => {
@@ -90,7 +108,7 @@ function App() {
 
   // Keep the URL describing what's on screen, so it can be copied and shared.
   const shareable = viewing?.record && isShareable(viewing.record.id) ? viewing.record.id : undefined;
-  const route: Route = { tab, legend: legendId ?? undefined, lichess: names.lichess, chesscom: names.chesscom, game: shareable, ply: shareable && viewPly > 0 ? viewPly : undefined };
+  const route: Route = { tab, legend: legendId ?? undefined, thread: tab === "forum" ? (thread ?? undefined) : undefined, lichess: names.lichess, chesscom: names.chesscom, game: shareable, ply: shareable && viewPly > 0 ? viewPly : undefined };
   const hash = buildHash(route);
   useEffect(() => {
     if (shared.loading) return; // don't overwrite the link while its game is still loading
@@ -105,6 +123,7 @@ function App() {
       const r = parseHash(window.location.hash);
       setTab(r.tab);
       setLegendId(r.legend ?? null);
+      setThread(r.thread ?? null);
       setNames({ lichess: r.lichess, chesscom: r.chesscom });
       setViewing(null);
       if (r.game) {
@@ -151,6 +170,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <AccountMenu onLogin={openLogin} />
         <h1>Chess Game Analyzer</h1>
         <p>Load your Lichess and Chess.com games to see your playing style and where to improve, study how the legends played, or train openings, middlegames and endgames with drills.</p>
         <nav className="tabs" role="tablist">
@@ -158,8 +178,8 @@ function App() {
             <button
               key={t.id}
               role="tab"
-              aria-selected={tab === t.id && !viewing}
-              className={`tab${tab === t.id ? " tab-on" : ""}`}
+              aria-selected={current === t.id && !viewing}
+              className={`tab${current === t.id ? " tab-on" : ""}`}
               onClick={() => {
                 setViewing(null);
                 setTab(t.id);
@@ -191,7 +211,7 @@ function App() {
       )}
 
       {/* Tabs stay mounted so loaded games and filters survive opening a game. */}
-      <div hidden={!!viewing || tab !== "mine"}>
+      <div hidden={!!viewing || current !== "mine"}>
         <MyGames
           engine={engine}
           initialNames={names}
@@ -205,10 +225,10 @@ function App() {
           onTraits={setUserTraits}
         />
       </div>
-      <div hidden={!!viewing || tab !== "legends"}>
+      <div hidden={!!viewing || current !== "legends"}>
         <Legends selectedId={legendId} onSelect={setLegendId} onOpenGame={openRecord} userTraits={userTraits} />
       </div>
-      <div hidden={!!viewing || tab !== "pgn"}>
+      <div hidden={!!viewing || current !== "pgn"}>
         <RecentGames engine={engine} onAnalyze={(g) => openRecord(g)} />
         <h3 className="or-heading">Or start from a position</h3>
         <FenInput onStart={startFromFen} />
@@ -217,9 +237,13 @@ function App() {
         {pgnError && <p className="error-message">{pgnError}</p>}
       </div>
 
-      <div hidden={!!viewing || tab !== "drills"}>
+      <div hidden={!!viewing || current !== "drills"}>
         <Drills />
       </div>
+
+      {/* The forum and login mount only while they are open, so visitors who never use them cost the forum nothing. */}
+      {!viewing && current === "forum" && <Forum threadId={thread} onOpenThread={setThread} onLogin={openLogin} />}
+      {!viewing && current === "login" && <LoginPage onDone={() => setTab(returnTab.current)} />}
 
       <footer className="app-footer muted small">
         Engine: Stockfish 19 (WASM), running in your browser. Games load directly from the Lichess and Chess.com public APIs. Legends' games from PGN Mentor.
