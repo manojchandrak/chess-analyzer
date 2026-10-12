@@ -1,5 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../lib/forum/auth-context";
+import type { OAuthProvider } from "../lib/forum/types";
+import { ProviderIcon } from "./ProviderIcon";
 import { LIMITS, validateEmail, validatePassword, validateUsername } from "../lib/forum/validation";
 
 type Mode = "login" | "signup" | "forgot" | "recovery";
@@ -11,6 +13,8 @@ const TITLES: Record<Mode, string> = {
   recovery: "Choose a new password",
 };
 
+const PROVIDER_NAMES: Record<OAuthProvider, string> = { google: "Google", github: "GitHub" };
+
 /** Log in, sign up (email and password, or Google / GitHub), reset a password, or set a new one after following a reset link. */
 export function LoginPage({ onDone }: { onDone: () => void }) {
   const { backend, session, recovering, finishRecovery } = useAuth();
@@ -21,6 +25,17 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [providers, setProviders] = useState<OAuthProvider[]>([]);
+
+  useEffect(() => {
+    let current = true;
+    void backend?.availableProviders().then((list) => {
+      if (current) setProviders(list);
+    });
+    return () => {
+      current = false;
+    };
+  }, [backend]);
 
   if (!backend) return null;
   const active: Mode = recovering ? "recovery" : mode;
@@ -99,7 +114,7 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
     );
   }
 
-  const social = backend.kind === "supabase" && (active === "login" || active === "signup");
+  const social = providers.length > 0 && (active === "login" || active === "signup");
 
   return (
     <div className="card login-page">
@@ -114,12 +129,12 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
       {social && (
         <>
           <div className="social-buttons">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void run(() => backend.signInWithProvider("google"))}>
-              Continue with Google
-            </button>
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void run(() => backend.signInWithProvider("github"))}>
-              Continue with GitHub
-            </button>
+            {providers.map((provider) => (
+              <button key={provider} type="button" className="btn btn-ghost" disabled={busy} onClick={() => void run(() => backend.signInWithProvider(provider))}>
+                <ProviderIcon provider={provider} />
+                Continue with {PROVIDER_NAMES[provider]}
+              </button>
+            ))}
           </div>
           <p className="muted small login-or">or use your email</p>
         </>

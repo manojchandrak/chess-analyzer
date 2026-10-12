@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { friendlyError, profileFromRow, replyFromRow, threadFromRow } from "../supabase";
+import { enabledProviders, friendlyError, profileFromRow, replyFromRow, threadFromRow } from "../supabase";
+
+describe("enabledProviders", () => {
+  it("lists only the Google and GitHub sign-in methods the project has switched on", () => {
+    expect(enabledProviders({ external: { email: true, google: false, github: false } })).toEqual([]);
+    expect(enabledProviders({ external: { email: true, google: true, github: false } })).toEqual(["google"]);
+    expect(enabledProviders({ external: { google: true, github: true } })).toEqual(["google", "github"]);
+  });
+  it("offers none when the settings are missing or unreadable", () => {
+    expect(enabledProviders(null)).toEqual([]);
+    expect(enabledProviders({})).toEqual([]);
+    expect(enabledProviders("nonsense")).toEqual([]);
+  });
+});
 
 describe("row mapping", () => {
   it("maps a thread row (with its author) to the app's shape", () => {
