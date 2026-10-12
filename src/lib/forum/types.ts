@@ -70,6 +70,8 @@ export interface ForumBackend {
   signUp(email: string, password: string, username: string): Promise<{ needsConfirmation: boolean }>;
   signIn(email: string, password: string): Promise<void>;
   signInWithProvider(provider: OAuthProvider): Promise<void>;
+  /** The "Continue with ..." sign-in methods that are switched on, so the login page only offers ones that work. */
+  availableProviders(): Promise<OAuthProvider[]>;
   sendPasswordReset(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
   signOut(): Promise<void>;

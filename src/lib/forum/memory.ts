@@ -85,6 +85,9 @@ export function createMemoryBackend(opts: MemoryOptions = {}): ForumBackend {
     async signInWithProvider(_provider: OAuthProvider) {
       throw new Error("Google and GitHub sign-in need the real backend. Use email and password in this demo.");
     },
+    async availableProviders() {
+      return [];
+    },
     async sendPasswordReset(email) {
       throwIf(validateEmail(email));
     },

@@ -11,6 +11,12 @@ function setup(opts: { seed?: boolean } = {}) {
 const signUp = (b: ForumBackend, name = "Alice") => b.signUp(`${name.toLowerCase()}@example.com`, "password123", name);
 const reject = async (p: Promise<unknown>) => (await p.then(() => null, (e: Error) => e.message)) ?? "";
 
+describe("sign-in methods", () => {
+  it("offers no Google or GitHub buttons in the demo, since they can't work there", async () => {
+    expect(await setup().b.availableProviders()).toEqual([]);
+  });
+});
+
 describe("accounts", () => {
   it("signs up, signs in and out, and reports each change", async () => {
     const { b } = setup();

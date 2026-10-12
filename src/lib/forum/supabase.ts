@@ -80,6 +80,12 @@ export function friendlyError(error: { message?: string; code?: string } | null 
   return new Error(message && message.length < 160 ? message : fallback);
 }
 
+/** Which of the Google / GitHub sign-in methods a Supabase project has switched on, from its public auth settings. */
+export function enabledProviders(settings: unknown): OAuthProvider[] {
+  const external = (settings as { external?: Record<string, unknown> } | null)?.external;
+  return (["google", "github"] as const).filter((p) => external?.[p] === true);
+}
+
 const THREAD_SELECT = "*, author:profiles!forum_threads_author_id_fkey(username)";
 const REPLY_SELECT = "*, author:profiles!forum_replies_author_id_fkey(username)";
 
@@ -144,6 +150,14 @@ export async function createSupabaseBackend(url: string, anonKey: string): Promi
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw friendlyError(error);
+    },
+    async availableProviders() {
+      try {
+        const res = await fetch(`${url.replace(/\/$/, "")}/auth/v1/settings`, { headers: { apikey: anonKey } });
+        return res.ok ? enabledProviders(await res.json()) : [];
+      } catch {
+        return []; // can't tell, so offer none rather than buttons that may not work
+      }
     },
     async signInWithProvider(provider: OAuthProvider) {
       const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: siteUrl() } });
