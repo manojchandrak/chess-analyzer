@@ -6,6 +6,10 @@ describe("parseHash", () => {
     expect(parseHash("")).toEqual({ tab: "mine" });
     expect(parseHash("#/nonsense")).toEqual({ tab: "mine" });
   });
+  it("reads the About and Privacy pages", () => {
+    expect(parseHash("#/about")).toEqual({ tab: "about" });
+    expect(parseHash("#/privacy")).toEqual({ tab: "privacy" });
+  });
   it("reads a legend", () => expect(parseHash("#/legends/morphy")).toEqual({ tab: "legends", legend: "morphy" }));
   it("reads usernames and a game with a move", () => {
     expect(parseHash("#/mine?lichess=DrN&chesscom=mc&g=lichess:abc123&ply=14")).toEqual({ tab: "mine", lichess: "DrN", chesscom: "mc", game: "lichess:abc123", ply: 14 });

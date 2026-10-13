@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMemoryBackend } from "../../forum/memory";
 import { SyncUnavailableError, type ForumBackend } from "../../forum/types";
-import { createSync, type SyncStatus, type SyncStorage } from "../manager";
+import { clearSavedOnDevice, createSync, type SyncStatus, type SyncStorage } from "../manager";
 import { SYNC_KEYS } from "../merge";
 
 const fakeStorage = (initial: Record<string, string> = {}): SyncStorage & { data: Map<string, string> } => {
@@ -100,6 +100,33 @@ describe("keeping a device and an account in step", () => {
     expect(statuses.at(-1)).toBe("unavailable");
     expect(sync.isUnavailable()).toBe(true);
     expect(sync.hasChanges()).toBe(false);
+  });
+
+  it("deletes a person's saved data from their account and nobody else's", async () => {
+    const backend = createMemoryBackend();
+    await signedIn(backend, "Alice");
+    await backend.saveUserData("usernames", { lichess: "alice", chesscom: "" });
+    await backend.signOut();
+    await signedIn(backend, "Bob");
+    await backend.saveUserData("usernames", { lichess: "bob", chesscom: "" });
+    await backend.deleteUserData();
+    expect(await backend.loadUserData()).toEqual({});
+    await backend.signOut();
+    await backend.signIn("alice@example.com", "password123");
+    expect((await backend.loadUserData()).usernames.value).toEqual({ lichess: "alice", chesscom: "" });
+  });
+
+  it("after a deletion, forgets this device's copy so it is not saved again", async () => {
+    const backend = createMemoryBackend();
+    const userId = await signedIn(backend, "Alice");
+    const storage = fakeStorage({ [SYNC_KEYS.puzzles]: '["p1"]' });
+    const { sync } = setup(backend, storage, userId);
+    await sync.run();
+    await backend.deleteUserData();
+    clearSavedOnDevice(storage);
+    expect(storage.data.get(SYNC_KEYS.puzzles)).toBeUndefined();
+    await sync.run();
+    expect(await backend.loadUserData()).toEqual({});
   });
 
   it("only lets people see their own saved data", async () => {

@@ -725,3 +725,18 @@ th.num .th-sort { justify-content: flex-end; }
 .reply-list .post { padding: 12px 14px; }
 .forum-setup { max-width: 640px; margin: 24px auto; text-align: left; }
 .forum-setup h2 { margin-top: 0; }
+
+/* ---------- About, privacy and the analytics banner ---------- */
+.info-page { max-width: 760px; margin: 0 auto; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.info-page h2, .info-page h3 { margin: 6px 0 0; }
+.info-page ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.info-page p { margin: 0; }
+.privacy-actions { display: flex; flex-direction: column; gap: 14px; }
+.privacy-actions > div { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.btn-danger { background: transparent; color: var(--danger, #e5484d); border: 1px solid var(--danger, #e5484d); padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+.btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger, #e5484d) 14%, transparent); }
+.link-button { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.footer-links { display: flex; gap: 16px; justify-content: center; margin-top: 8px; }
+.consent-banner { position: sticky; bottom: 12px; margin: 24px auto 0; max-width: 640px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between; text-align: left; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; box-shadow: var(--card-shadow); }
+.consent-banner p { margin: 0; flex: 1 1 320px; font-size: 0.92rem; }
+.consent-actions { display: flex; gap: 8px; }
