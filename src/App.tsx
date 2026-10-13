@@ -19,6 +19,7 @@ import type { Traits } from "./lib/profile";
 import { buildHash, isShareable, parseHash, type Route, type Tab } from "./lib/route";
 import { AnalyticsConsent } from "./components/AnalyticsConsent";
 import { NewGame } from "./components/NewGame";
+import { InstallApp, OfflineNote } from "./components/InstallApp";
 import { HistoryView } from "./components/HistoryView";
 import { recordOpened } from "./lib/history";
 import { decodeSharedGame, encodeSharedGame } from "./lib/shareLink";
@@ -200,6 +201,7 @@ function App() {
 
   return (
     <div className="app">
+      <OfflineNote />
       <header className="app-header">
         <AccountMenu onLogin={openLogin} />
         <h1>Chess Game Analyzer</h1>
@@ -290,6 +292,7 @@ function App() {
           <button className="link-button" onClick={() => openInfo("privacy")}>
             Privacy
           </button>
+          <InstallApp />
         </nav>
       </footer>
       <AnalyticsConsent onOpenPrivacy={() => openInfo("privacy")} />

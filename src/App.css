@@ -763,3 +763,5 @@ th.num .th-sort { justify-content: flex-end; }
 .star-col { width: 1%; padding-left: 4px; padding-right: 0; }
 .history-filters .chip { text-transform: none; }
 .drill-chip-count { text-transform: none; }
+
+.offline-note { margin: 0 auto 12px; max-width: 760px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.9rem; text-align: center; }

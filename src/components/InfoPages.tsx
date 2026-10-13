@@ -25,6 +25,11 @@ export function AboutPage({ onClose }: { onClose: () => void }) {
         <li>Reviews run on your own device, so there is no per-game limit and your games are not uploaded to anyone.</li>
         <li>An optional account (email, Google or GitHub) saves your usernames, settings and progress so they follow you between devices, and lets you post in the Community tab.</li>
       </ul>
+      <h3>Install it</h3>
+      <p>
+        Add it to your phone or computer like an app. On Android, Chrome or Edge, use the Install app link in the footer (or the browser menu). On iPhone and iPad, tap Share, then Add to Home Screen. Once installed, the board, the drills, the engine and
+        anything you have already reviewed work offline; loading games and logging in still need a connection.
+      </p>
       <h3>Built on</h3>
       <ul>
         <li>
