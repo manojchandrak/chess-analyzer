@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { DRILLS, type Drill, type DrillPhase } from "../lib/drillData";
 import { drillStatus, nextDrill, phaseProgress, resetProgress, useDrillProgress, type DrillStatus } from "../lib/drills";
+import { useMistakes } from "../lib/mistakes";
 import { DrillSession } from "./DrillSession";
+import { MistakeDrills } from "./MistakeDrills";
 
 const PHASES: { id: DrillPhase; label: string; blurb: string }[] = [
   { id: "opening", label: "Openings", blurb: "Play a main line from memory. The other side's moves are played for you, with the ideas explained as you go." },
@@ -14,11 +16,14 @@ const STATUS_LABEL: Record<DrillStatus, string> = { new: "New", due: "Due", lear
 /** Opening, middlegame and endgame drills, scheduled by spaced repetition. */
 export function Drills() {
   const [phase, setPhase] = useState<DrillPhase>("opening");
+  const [showMistakes, setShowMistakes] = useState(false);
+  const mistakes = useMistakes();
   const [active, setActive] = useState<Drill | null>(null);
   const [attempt, setAttempt] = useState(0);
   const progress = useDrillProgress();
   const inPhase = DRILLS.filter((d) => d.phase === phase);
   const stats = phaseProgress(DRILLS, phase, progress);
+  const mistakesToDo = mistakes.filter((m) => ['new', 'due'].includes(drillStatus(progress[`mistake:${m.id}`]))).length;
 
   function open(d: Drill | null) {
     setActive(d);
@@ -45,13 +50,29 @@ export function Drills() {
         {PHASES.map((p) => {
           const s = phaseProgress(DRILLS, p.id, progress);
           return (
-            <button key={p.id} role="tab" aria-selected={phase === p.id} className={`chip${phase === p.id ? " chip-on" : ""}`} onClick={() => setPhase(p.id)}>
+            <button
+              key={p.id}
+              role="tab"
+              aria-selected={phase === p.id && !showMistakes}
+              className={`chip${phase === p.id && !showMistakes ? " chip-on" : ""}`}
+              onClick={() => {
+                setPhase(p.id);
+                setShowMistakes(false);
+              }}
+            >
               {p.label} <span className="drill-chip-count">{s.mastered}/{s.total}</span>
             </button>
           );
         })}
+        <button role="tab" aria-selected={showMistakes} className={`chip${showMistakes ? " chip-on" : ""}`} onClick={() => setShowMistakes(true)}>
+          My mistakes{mistakes.length > 0 && <span className="drill-chip-count"> {mistakesToDo > 0 ? `${mistakesToDo} to do` : mistakes.length}</span>}
+        </button>
       </div>
 
+      {showMistakes ? (
+        <MistakeDrills />
+      ) : (
+        <>
       <div className="card drill-summary">
         <div>
           <h2>{meta.label} drills</h2>
@@ -101,6 +122,8 @@ export function Drills() {
           Reset {meta.label.toLowerCase()} progress
         </button>
       </p>
+        </>
+      )}
     </section>
   );
 }

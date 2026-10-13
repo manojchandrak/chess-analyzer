@@ -14,6 +14,7 @@ import type { GameFeatures } from "../lib/style";
 import { buildTips } from "../lib/tips";
 import { openingAccuracy } from "../lib/openingStats";
 import { collectPuzzles } from "../lib/puzzles";
+import { addMistakes } from "../lib/mistakes";
 import { buildTrends } from "../lib/trends";
 import { GameList } from "./GameList";
 import { PuzzleDrill } from "./PuzzleDrill";
@@ -94,6 +95,10 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
   const gameMap = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
   const trends = useMemo(() => buildTrends(filtered, reviews), [filtered, reviews]);
   const puzzles = useMemo(() => collectPuzzles(filteredReviews, gameMap), [filteredReviews, gameMap]);
+  // Every reviewed game feeds the permanent bank of mistakes (practised under Drills), not just the ones shown here.
+  useEffect(() => {
+    addMistakes(collectPuzzles([...reviews.values()], gameMap, Number.POSITIVE_INFINITY));
+  }, [reviews, gameMap]);
   const openingAcc = useMemo(() => openingAccuracy(filteredReviews), [filteredReviews]);
   const tips = useMemo(() => (profile ? buildTips(profile, filtered, summary) : []), [profile, filtered, summary]);
   const timeClasses = useMemo(() => [...new Set(games.map((g) => g.timeClass).filter(Boolean))] as TimeClass[], [games]);

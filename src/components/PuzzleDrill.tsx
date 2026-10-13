@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import type { Result } from "../lib/drills";
 import { checkAnswer, isOwnPiece, legalTargets, loadSolved, saveSolved, type PuzzleItem } from "../lib/puzzles";
 import { sanSquares } from "../lib/uci";
 import { Board } from "./Board";
@@ -7,11 +8,14 @@ type Feedback = { kind: "correct" | "wrong" | "illegal" | "shown"; san?: string 
 
 interface PuzzleProps {
   puzzle: PuzzleItem;
-  onSolved: () => void;
+  onSolved?: () => void;
+  /** How it went: solved first time (clean), solved after wrong tries, or the answer was shown (failed). */
+  onResult?: (result: Result) => void;
 }
 
 /** One position to solve: click a piece then a square, or type the move. Resets for each puzzle (keyed by id). */
-function Puzzle({ puzzle, onSolved }: PuzzleProps) {
+export function Puzzle({ puzzle, onSolved, onResult }: PuzzleProps) {
+  const [wrongTries, setWrongTries] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [typed, setTyped] = useState("");
@@ -23,7 +27,11 @@ function Puzzle({ puzzle, onSolved }: PuzzleProps) {
     const { result, san } = checkAnswer(puzzle.fen, move, puzzle.best);
     setSelected(null);
     setFeedback({ kind: result, san });
-    if (result === "correct") onSolved();
+    if (result === "wrong") setWrongTries((n) => n + 1);
+    if (result === "correct") {
+      onSolved?.();
+      onResult?.(wrongTries === 0 ? "clean" : "solved");
+    }
   }
 
   function onSquare(square: string) {
@@ -79,7 +87,13 @@ function Puzzle({ puzzle, onSolved }: PuzzleProps) {
           )}
         </div>
         {!done && (
-          <button className="btn btn-ghost" onClick={() => setFeedback({ kind: "shown" })}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setFeedback({ kind: "shown" });
+              onResult?.("failed");
+            }}
+          >
             Show answer
           </button>
         )}

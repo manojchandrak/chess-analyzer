@@ -249,13 +249,13 @@ create table if not exists public.user_data (
   value jsonb not null,
   updated_at timestamptz not null default now(),
   primary key (user_id, key),
-  constraint user_data_key_allowed check (key in ('usernames', 'options', 'board', 'drills', 'stats', 'puzzles', 'history')),
+  constraint user_data_key_allowed check (key in ('usernames', 'options', 'board', 'drills', 'stats', 'puzzles', 'history', 'mistakes')),
   constraint user_data_value_size check (octet_length(value::text) <= 2000000)
 );
 
 -- Tables made by an earlier version of this file know fewer kinds of data; widen the list (safe to repeat).
 alter table public.user_data drop constraint if exists user_data_key_allowed;
-alter table public.user_data add constraint user_data_key_allowed check (key in ('usernames', 'options', 'board', 'drills', 'stats', 'puzzles', 'history'));
+alter table public.user_data add constraint user_data_key_allowed check (key in ('usernames', 'options', 'board', 'drills', 'stats', 'puzzles', 'history', 'mistakes'));
 
 create or replace function public.user_data_touch() returns trigger language plpgsql as $$
 begin

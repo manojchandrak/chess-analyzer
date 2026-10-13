@@ -2,6 +2,7 @@
 // Everything here is plain functions on plain data, so the rules can be tested without a browser or a database.
 import type { UserDataEntry } from "../forum/types.ts";
 import { mergeHistory, parseHistory } from "../historyCore.ts";
+import { mergeMistakes, parseMistakes } from "../mistakeCore.ts";
 
 /** Each kind of saved data, and the browser storage key it lives in on this device. The names are the keys used in the database. */
 export const SYNC_KEYS = {
@@ -12,13 +13,14 @@ export const SYNC_KEYS = {
   stats: "chess-analyzer:stats:v1",
   puzzles: "chess-analyzer:puzzles:v1",
   history: "chess-analyzer:history:v1",
+  mistakes: "chess-analyzer:mistakes:v1",
 } as const;
 
 export type SyncName = keyof typeof SYNC_KEYS;
 export const SYNC_NAMES = Object.keys(SYNC_KEYS) as SyncName[];
 
 /** Progress that only grows: both copies are combined so nothing earned on one device is lost on another. */
-const COMBINED = new Set<SyncName>(["drills", "stats", "puzzles", "history"]);
+const COMBINED = new Set<SyncName>(["drills", "stats", "puzzles", "history", "mistakes"]);
 
 /** JSON with object keys in a fixed order, so the same data always gives the same text (the database reorders keys). */
 export function stable(value: unknown): string {
@@ -48,6 +50,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v =
 /** Combines this device's progress with the account's. Anything unrecognisable is ignored in favour of the other side. */
 export function combine(name: SyncName, local: unknown, remote: unknown): unknown {
   if (name === "history") return mergeHistory(parseHistory(local), parseHistory(remote));
+  if (name === "mistakes") return mergeMistakes(parseMistakes(local), parseMistakes(remote));
   if (name === "puzzles") {
     if (!Array.isArray(local) || !Array.isArray(remote)) return Array.isArray(local) ? local : remote;
     return [...new Set([...remote, ...local].filter((id): id is string => typeof id === "string"))].sort();

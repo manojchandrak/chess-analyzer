@@ -139,7 +139,7 @@ export function drillStatus(rec: DrillRecord | undefined, now = Date.now()): Dri
 
 /** The drill to practise next: anything due (weakest first), then new ones in
  * order, then whatever comes back soonest. */
-export function nextDrill(drills: Drill[], progress: Progress, exclude?: string, now = Date.now()): Drill | null {
+export function nextDrill<T extends { id: string }>(drills: T[], progress: Progress, exclude?: string, now = Date.now()): T | null {
   const pool = drills.filter((d) => d.id !== exclude);
   const due = pool.filter((d) => progress[d.id] && progress[d.id].due <= now).sort((a, b) => progress[a.id].box - progress[b.id].box || progress[a.id].due - progress[b.id].due);
   if (due.length) return due[0];
