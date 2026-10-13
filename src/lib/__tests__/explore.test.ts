@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentFen, fenProblem, isPromotion, numbered, ownPiece, play, playUci, sideToMove, START_FEN, startExplore, status, targetsFrom, undo } from "../explore";
+import { currentFen, exploreToPgn, fenProblem, isPromotion, numbered, ownPiece, play, playUci, resultOf, sideToMove, START_FEN, startExplore, status, targetsFrom, undo } from "../explore";
 
 describe("fenProblem", () => {
   it("accepts real positions and explains bad ones", () => {
@@ -73,5 +73,43 @@ describe("status", () => {
     const s = ["e2e4", "f7f6", "d1h5"].reduce((st, u) => playUci(st, u)!, startExplore(START_FEN));
     expect(status(s)).toEqual({ over: false, text: null, inCheck: true });
     expect(status(startExplore(START_FEN))).toEqual({ over: false, text: null, inCheck: false });
+  });
+});
+
+describe("exploreToPgn and resultOf", () => {
+  const playAll = (ucis: string[], start = START_FEN) => ucis.reduce((s, u) => playUci(s, u) ?? s, startExplore(start));
+  const meta = { white: "You", black: "Stockfish (Club player)", date: new Date(2026, 9, 13) };
+
+  it("writes tags, numbered moves and an unfinished-game result", () => {
+    const pgn = exploreToPgn(playAll(["e2e4", "e7e5", "g1f3"]), meta);
+    expect(pgn).toContain('[White "You"]');
+    expect(pgn).toContain('[Black "Stockfish (Club player)"]');
+    expect(pgn).toContain('[Date "2026.10.13"]');
+    expect(pgn).toContain('[Result "*"]');
+    expect(pgn).not.toContain("[FEN");
+    expect(pgn.trim().endsWith("1. e4 e5 2. Nf3 *")).toBe(true);
+  });
+
+  it("records the result when the game is over", () => {
+    const fools = playAll(["f2f3", "e7e5", "g2g4", "d8h4"]);
+    expect(resultOf(fools)).toBe("0-1");
+    expect(exploreToPgn(fools, meta).trim().endsWith("1. f3 e5 2. g4 Qh4# 0-1")).toBe(true);
+  });
+
+  it("keeps the starting position and the right move numbers for a game that began mid-way", () => {
+    const fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+    const pgn = exploreToPgn(playAll(["g1f3", "b8c6"], fen), meta);
+    expect(pgn).toContain('[SetUp "1"]');
+    expect(pgn).toContain(`[FEN "${fen}"]`);
+    expect(pgn.trim().endsWith("2. Nf3 Nc6 *")).toBe(true);
+  });
+
+  it("numbers a first move by Black as 1...", () => {
+    const afterE4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    expect(exploreToPgn(playAll(["e7e5"], afterE4), meta).trim().endsWith("1... e5 *")).toBe(true);
+  });
+
+  it("strips characters that would break a tag", () => {
+    expect(exploreToPgn(startExplore(START_FEN), { ...meta, white: 'Bo"b\\' })).toContain('[White "Bob"]');
   });
 });

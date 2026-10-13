@@ -18,6 +18,8 @@ import { parsePgn, parseRecord, type ParsedGame } from "./lib/pgn";
 import type { Traits } from "./lib/profile";
 import { buildHash, isShareable, parseHash, type Route, type Tab } from "./lib/route";
 import { AnalyticsConsent } from "./components/AnalyticsConsent";
+import { NewGame } from "./components/NewGame";
+import { START_FEN } from "./lib/explore";
 import { AboutPage, PrivacyPage } from "./components/InfoPages";
 import { fetchLichessGame } from "./lib/sources";
 
@@ -29,6 +31,7 @@ interface Viewing {
   initialPly?: number;
   /** Open straight into "play from this position" (no game to step through). */
   exploreFen?: string;
+  exploreMode?: "both" | "w" | "b";
 }
 
 const ALL_TABS: { id: Tab; label: string }[] = [
@@ -155,9 +158,9 @@ function App() {
     requestAnimationFrame(() => window.scrollTo(0, scrollBack.current));
   }
 
-  function startFromFen(fen: string) {
+  function startFromFen(fen: string, mode?: "both" | "w" | "b") {
     scrollBack.current = window.scrollY;
-    setViewing({ game: { white: "Position", black: "", whiteElo: null, blackElo: null, result: "*", moves: [] }, record: null, exploreFen: fen });
+    setViewing({ game: { white: "Position", black: "", whiteElo: null, blackElo: null, result: "*", moves: [] }, record: null, exploreFen: fen, exploreMode: mode });
   }
 
   function analyzePgn() {
@@ -212,6 +215,7 @@ function App() {
           autoAnalyzeDepth={viewing.autoAnalyzeDepth}
           initialPly={viewing.initialPly}
           exploreFen={viewing.exploreFen}
+          exploreMode={viewing.exploreMode}
           onPlyChange={setViewPly}
           shareUrl={shareUrl}
         />
@@ -236,6 +240,7 @@ function App() {
         <Legends selectedId={legendId} onSelect={setLegendId} onOpenGame={openRecord} userTraits={userTraits} />
       </div>
       <div hidden={!!viewing || current !== "pgn"}>
+        <NewGame onStart={(mode) => startFromFen(START_FEN, mode)} />
         <RecentGames engine={engine} onAnalyze={(g) => openRecord(g)} />
         <h3 className="or-heading">Or start from a position</h3>
         <FenInput onStart={startFromFen} />

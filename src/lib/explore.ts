@@ -115,3 +115,41 @@ export function numbered(s: ExploreState): { no: number; w?: string; b?: string 
   });
   return rows;
 }
+
+/** The result tag for a game played on the board: "1-0", "0-1", "1/2-1/2", or "*" while it is unfinished. */
+export function resultOf(s: ExploreState): "1-0" | "0-1" | "1/2-1/2" | "*" {
+  const text = status(s).text;
+  if (!text) return "*";
+  if (text.includes("White wins")) return "1-0";
+  if (text.includes("Black wins")) return "0-1";
+  return "1/2-1/2";
+}
+
+/** A PGN of the game played on the board, ready to download or paste into "Analyze a game". A game that didn't start from the
+ * standard position carries its starting FEN. Names appear exactly as given. */
+export function exploreToPgn(s: ExploreState, meta: { white: string; black: string; date?: Date; event?: string }): string {
+  const d = meta.date ?? new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const result = resultOf(s);
+  const tag = (name: string, value: string) => `[${name} "${value.replace(/["\\]/g, "")}"]`;
+  const tags = [
+    tag("Event", meta.event ?? "Casual game"),
+    tag("Site", "Chess Game Analyzer"),
+    tag("Date", `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`),
+    tag("Round", "-"),
+    tag("White", meta.white),
+    tag("Black", meta.black),
+    tag("Result", result),
+  ];
+  if (s.startFen !== START_FEN) tags.push(tag("SetUp", "1"), tag("FEN", s.startFen));
+  const parts: string[] = [];
+  let no = Number(s.startFen.split(" ")[5]) || 1;
+  s.moves.forEach((m, i) => {
+    if (m.color === "w") parts.push(`${no}. ${m.san}`);
+    else {
+      parts.push(i === 0 ? `${no}... ${m.san}` : m.san);
+      no++;
+    }
+  });
+  return `${tags.join("\n")}\n\n${parts.join(" ")}${parts.length ? " " : ""}${result}\n`;
+}

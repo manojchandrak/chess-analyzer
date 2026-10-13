@@ -48,11 +48,13 @@ interface Props {
   shareUrl?: string | null;
   /** Open straight into "play from this position" with this FEN (no game to step through). */
   exploreFen?: string;
+  /** With `exploreFen`: start as an analysis board or playing a colour against Stockfish. */
+  exploreMode?: "both" | "w" | "b";
 }
 
 const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
 
-export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth, initialPly, onPlyChange, shareUrl, exploreFen }: Props) {
+export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeDepth, initialPly, onPlyChange, shareUrl, exploreFen, exploreMode }: Props) {
   const [ply, setPly] = useState(() => Math.max(0, Math.min(initialPly ?? 0, game.moves.length)));
   const [flipped, setFlipped] = useState(record?.playerColor === "b");
   const [depth, setDepth] = useState(autoAnalyzeDepth ?? 12);
@@ -216,7 +218,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const meta = currentAnalysis ? CLASS_META[currentAnalysis.cls] : null;
 
   if (explore) {
-    return <ExploreView startFen={explore.startFen} initialUci={explore.initialUci} label={explore.label} flipped={flipped} engine={engine} onExit={() => (exploreFen ? onBack?.() : setExplore(null))} exitLabel={exploreFen ? "← Back" : undefined} />;
+    return <ExploreView startFen={explore.startFen} initialUci={explore.initialUci} label={explore.label} flipped={flipped} initialMode={exploreFen ? exploreMode : undefined} heading={exploreFen === START_FEN && exploreMode && exploreMode !== "both" ? "New game against Stockfish" : undefined} engine={engine} onExit={() => (exploreFen ? onBack?.() : setExplore(null))} exitLabel={exploreFen ? "← Back" : undefined} />;
   }
 
   return (
