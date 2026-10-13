@@ -121,9 +121,9 @@ export function ProgressView({ onOpen }: { onOpen: (game: GameRecord) => void })
         <>
           <div className="progress-cards">
             <Card label="Games reviewed" value={String(avg.games)} />
-            <Card label="Average accuracy" value={avg.accuracy === null ? "—" : `${avg.accuracy}%`} note={form.accuracyChange !== null ? `${signed(form.accuracyChange)} vs the 20 before` : null} tone={form.accuracyChange === null ? undefined : form.accuracyChange > 0 ? "good" : form.accuracyChange < 0 ? "bad" : undefined} />
-            <Card label="Estimated performance" value={avg.performance === null ? "—" : String(avg.performance)} note={r.performance !== null && p?.performance != null ? `${signed(r.performance - p.performance, 0)} vs the 20 before` : null} tone={r.performance !== null && p?.performance != null ? (r.performance > p.performance ? "good" : r.performance < p.performance ? "bad" : undefined) : undefined} />
-            <Card label="Blunders per game" value={avg.blundersPerGame === null ? "—" : avg.blundersPerGame.toFixed(2)} note={form.blunderChange !== null ? `${signed(form.blunderChange, 2)} vs the 20 before` : null} tone={form.blunderChange === null ? undefined : form.blunderChange < 0 ? "good" : form.blunderChange > 0 ? "bad" : undefined} />
+            <Card label="Average accuracy" value={avg.accuracy === null ? "—" : `${avg.accuracy}%`} note={form.accuracyChange !== null ? `${signed(form.accuracyChange)} vs the ${p?.games ?? 20} before` : null} tone={form.accuracyChange === null ? undefined : form.accuracyChange > 0 ? "good" : form.accuracyChange < 0 ? "bad" : undefined} />
+            <Card label="Estimated performance" value={avg.performance === null ? "—" : String(avg.performance)} note={r.performance !== null && p?.performance != null ? `${signed(r.performance - p.performance, 0)} vs the ${p?.games ?? 20} before` : null} tone={r.performance !== null && p?.performance != null ? (r.performance > p.performance ? "good" : r.performance < p.performance ? "bad" : undefined) : undefined} />
+            <Card label="Blunders per game" value={avg.blundersPerGame === null ? "—" : avg.blundersPerGame.toFixed(2)} note={form.blunderChange !== null ? `${signed(form.blunderChange, 2)} vs the ${p?.games ?? 20} before` : null} tone={form.blunderChange === null ? undefined : form.blunderChange < 0 ? "good" : form.blunderChange > 0 ? "bad" : undefined} />
             <Card label="Score" value={avg.scorePct === null ? "—" : `${avg.scorePct}%`} note="points per game" />
           </div>
 

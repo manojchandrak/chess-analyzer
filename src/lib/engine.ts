@@ -70,6 +70,8 @@ interface Job {
   fen: string;
   depth: number;
   multiPv: MultiPv;
+  /** Part of a whole-game review: runs after anything someone is waiting on (a reply, a hint). */
+  background: boolean;
   resolve: (e: EngineEval) => void;
   reject: (err: Error) => void;
 }
@@ -129,10 +131,15 @@ export class StockfishEngine {
   /** Evaluates a FEN position to the given depth, returning the best move and its
    * score from the perspective of the side to move (plus the second-best move's
    * score with `multiPv: 2`). Rejects with an EngineError if Stockfish fails. */
-  evaluate(fen: string, depth: number, opts: { multiPv?: MultiPv } = {}): Promise<EngineEval> {
+  evaluate(fen: string, depth: number, opts: { multiPv?: MultiPv; background?: boolean } = {}): Promise<EngineEval> {
     if (this.terminated) return Promise.reject(new EngineError("The engine was shut down."));
     return new Promise<EngineEval>((resolve, reject) => {
-      this.jobs.push({ fen, depth, multiPv: opts.multiPv ?? 1, resolve, reject });
+      const job: Job = { fen, depth, multiPv: opts.multiPv ?? 1, background: opts.background ?? false, resolve, reject };
+      // A review hands over a whole game's positions at once. Someone waiting on an answer (the engine's reply in a game, a
+      // hint) goes in front of the review's remaining positions instead of behind all of them.
+      const firstBackground = job.background ? -1 : this.jobs.findIndex((j) => j.background);
+      if (firstBackground === -1) this.jobs.push(job);
+      else this.jobs.splice(firstBackground, 0, job);
       this.pump();
     });
   }

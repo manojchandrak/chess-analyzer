@@ -115,7 +115,6 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
   const runEngine = useCallback(
     async (atDepth: number) => {
       if (!engine) return;
-      setEngineOn(true);
       setReviewError(null);
       setProgress({ done: 0, total: game.moves.length + 1 });
       try {
@@ -260,8 +259,9 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
 
       <div className="viewer-body">
         <div className="viewer-board">
-          <div className="board-wrap board-wrap-bar">
-            <EvalBar cp={bar?.cp ?? 0} mate={bar?.mate ?? null} flipped={flipped} depth={bar?.depth} mated={bar?.mated} empty={!bar} />
+          {/* The evaluation bar belongs to the Stockfish toggle: off (the default), no bar and the board uses the room. */}
+          <div className={`board-wrap${engineOn ? " board-wrap-bar" : ""}`}>
+            {engineOn && <EvalBar cp={bar?.cp ?? 0} mate={bar?.mate ?? null} flipped={flipped} depth={bar?.depth} mated={bar?.mated} empty={!bar} />}
             <Board
               fen={fen}
               flipped={flipped}

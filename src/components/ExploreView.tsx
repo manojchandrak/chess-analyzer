@@ -50,7 +50,8 @@ export function ExploreView({ startFen, initialUci, label, flipped: startFlipped
   const [promoting, setPromoting] = useState<{ from: string; to: string } | null>(null);
   // The position the engine failed to answer (so we don't retry in a loop until the user asks).
   const [failedFen, setFailedFen] = useState<string | null>(null);
-  const [engineOn, setEngineOn] = useState(true);
+  // Off by default: the evaluation bar and the engine's lines appear only when this is switched on.
+  const [engineOn, setEngineOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<{ fen: string; arrow: BoardArrow } | null>(null);
   const [focusLine, setFocusLine] = useState<{ fen: string; index: number } | null>(null);
@@ -164,8 +165,8 @@ export function ExploreView({ startFen, initialUci, label, flipped: startFlipped
 
       <div className="viewer-body">
         <div className="viewer-board">
-          <div className="board-wrap board-wrap-bar">
-            <EvalBar cp={bar?.cp ?? 0} mate={bar?.mate ?? null} flipped={flipped} depth={bar?.depth} mated={matedColor} empty={!bar && !matedColor} />
+          <div className={`board-wrap${engineOn ? " board-wrap-bar" : ""}`}>
+            {engineOn && <EvalBar cp={bar?.cp ?? 0} mate={bar?.mate ?? null} flipped={flipped} depth={bar?.depth} mated={matedColor} empty={!bar && !matedColor} />}
             <Board fen={fen} flipped={flipped} lastMove={last ? { from: last.from, to: last.to } : null} onSquareClick={onSquare} selected={selected} targets={targets} arrows={arrows} />
           </div>
           {promoting && (

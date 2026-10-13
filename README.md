@@ -35,8 +35,9 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 - **Legends**: Morphy, Steinitz, Lasker, Capablanca, Alekhine, Botvinnik, Tal,
   Petrosian, Fischer, Karpov, Kasparov and Carlsen, with style profiles, repertoire,
   a featured famous game each, and a searchable list of ~23,000 games.
-- **Game viewer**: step through any game on a board. Switch on Stockfish for a
-  live eval bar and best line for the position on screen. A full review labels
+- **Game viewer**: step through any game on a board. Switch on Stockfish (off by default,
+  and the board gives the bar's room back while it is off) for a live eval bar and best line for the
+  position on screen. A full review labels
   every move Chess.com-style (Brilliant !!, Great !, Best, Excellent, Good, Book,
   Inaccuracy ?!, Mistake ?, Miss, Blunder ??), shows the best move you missed, a
   per-player classification table, accuracy by phase and a clickable evaluation
