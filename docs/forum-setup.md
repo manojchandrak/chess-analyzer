@@ -14,6 +14,10 @@ step 5 are set, the Community tab and the Log in button stay hidden, so nothing 
 1. In the project, open **SQL Editor** and click **New query**.
 2. Paste the whole of [`supabase/schema.sql`](../supabase/schema.sql) and click **Run**. It is safe to run again later.
 
+This also creates the `user_data` table that holds each signed-in person's saved usernames, settings and progress (only they
+can read or change their own rows). If the Log in button works but the account menu shows **Not saved**, the table is
+missing: run the SQL file again.
+
 This creates the profiles, threads and replies tables, and the rules that decide who can do what (everyone can read,
 signed-in people can post as themselves and edit or delete their own posts, moderators can moderate, and posting is
 rate-limited). Those rules live in the database, so they apply no matter what the web page does.

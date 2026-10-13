@@ -31,6 +31,12 @@ function load(): Map<string, GameStats> {
 
 let stats = load();
 
+/** Re-reads the ratings from browser storage, after saved data from the person's account was written into it. */
+export function reloadGameStats(): void {
+  stats = load();
+  listeners.forEach((l) => l());
+}
+
 export function statsFromAnalysis(analysis: AnalysisResult, color: "w" | "b"): GameStats {
   const p = color === "w" ? analysis.white : analysis.black;
   const c = p.classCounts;

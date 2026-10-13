@@ -11,7 +11,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
 ## Features
 
 - **My games**: enter a Lichess and/or Chess.com username. Recent games load
-  straight from each site's public API (no login, nothing sent anywhere else).
+  straight from each site's public API (no login needed; nothing is sent anywhere
+  else unless you log in, see **Saved to your account** below).
   Load 50–500 recent games per site, or **all games** (streamed with a live
   count; stop at any time and keep what has loaded).
   - **Playing style**: five traits (aggression, sacrificial risk, endgame
@@ -93,6 +94,13 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Supabase; the tab and the Log in button stay hidden until it is set up, see
   [docs/forum-setup.md](docs/forum-setup.md). `VITE_FORUM_MOCK=1 npm run dev` tries the screens
   with an in-memory demo (no account or project needed).
+- **Saved to your account**: when you are logged in, your Lichess / Chess.com usernames, the
+  load options, board and voice settings, drill and puzzle progress, and the per-game ratings
+  used for sorting are saved to your account and follow you to other devices. Each person can
+  only read and change their own saved data (a database rule, not a page rule). Merging is
+  safe: progress from two devices is combined, and one person's data is cleared from a shared
+  browser before someone else's is loaded. Full engine reviews stay in the browser only, as
+  they are large and can be recomputed. Not logged in, nothing leaves the browser.
 - **Sort games** (yours or a legend's): click any column header (date, opponent rating,
   result, opening, brilliant/great moves, accuracy, performance) to sort by it, and click
   again to reverse; the Sort menu has presets such as fewest blunders and longest games.

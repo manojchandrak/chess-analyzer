@@ -1,7 +1,7 @@
 // An in-memory forum backend with the same rules as the real one (permissions, limits, rate limits),
 // used by the tests and by `VITE_FORUM_MOCK=1` so the screens can be tried without a Supabase project.
 // Nothing here is saved or shared: it resets when the page reloads.
-import type { AuthEvent, CategoryId, ForumBackend, OAuthProvider, Profile, Reply, Session, Thread, ThreadList } from "./types.ts";
+import type { AuthEvent, CategoryId, ForumBackend, OAuthProvider, Profile, Reply, Session, Thread, ThreadList, UserDataEntry } from "./types.ts";
 import { isCategory } from "./types.ts";
 import { validateEmail, validatePassword, validateReply, validateThreadBody, validateTitle, validateUsername } from "./validation.ts";
 
@@ -30,6 +30,7 @@ export function createMemoryBackend(opts: MemoryOptions = {}): ForumBackend {
   let replies: Reply[] = [];
   let currentId: string | null = null;
   let counter = 0;
+  const savedData = new Map<string, Record<string, UserDataEntry>>();
   const listeners = new Set<(event: AuthEvent, session: Session | null) => void>();
   const iso = (ms = now()) => new Date(ms).toISOString();
   const nextId = (prefix: string) => `${prefix}${++counter}`;
@@ -87,6 +88,16 @@ export function createMemoryBackend(opts: MemoryOptions = {}): ForumBackend {
     },
     async availableProviders() {
       return [];
+    },
+    async loadUserData() {
+      const u = requireMe();
+      return { ...(savedData.get(u.id) ?? {}) };
+    },
+    async saveUserData(key, value) {
+      const u = requireMe();
+      const updatedAt = iso();
+      savedData.set(u.id, { ...(savedData.get(u.id) ?? {}), [key]: { value: JSON.parse(JSON.stringify(value)) as unknown, updatedAt } });
+      return updatedAt;
     },
     async sendPasswordReset(email) {
       throwIf(validateEmail(email));
