@@ -101,6 +101,9 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   safe: progress from two devices is combined, and one person's data is cleared from a shared
   browser before someone else's is loaded. Full engine reviews stay in the browser only, as
   they are large and can be recomputed. Not logged in, nothing leaves the browser.
+- **Play a game**: on the Analyze tab, **Play as White** or **Play as Black** starts a new game against Stockfish
+  (Beginner, Club or Strong) from the standard position. Take moves back, ask for the best move, and
+  **Download PGN** to keep the game or paste it into Analyze a game.
 - **About and Privacy pages** (footer links): what the site is, what is stored where, and buttons
   to delete your saved account data or clear everything this site stored in your browser.
 - **Optional Google Analytics**: set `VITE_GA_MEASUREMENT_ID` (a GA4 id like `G-ABC123XYZ`, in

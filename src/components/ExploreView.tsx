@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useLiveEval } from "../hooks/useLiveEval";
 import { uciSquares, type BoardArrow } from "../lib/boardText";
 import { EngineError, type StockfishEngine } from "../lib/engine";
-import { currentFen, isPromotion, numbered, ownPiece, play, playUci, sideToMove, startExplore, status, targetsFrom, undo, type ExploreState } from "../lib/explore";
+import { currentFen, exploreToPgn, isPromotion, numbered, ownPiece, play, playUci, sideToMove, startExplore, status, targetsFrom, undo, type ExploreState } from "../lib/explore";
+import { downloadText } from "../lib/pgnExport";
 import { Board } from "./Board";
 import { BoardSettings } from "./BoardSettings";
 import { EngineLines } from "./EngineLines";
@@ -25,6 +26,10 @@ interface Props {
   /** What the position is, for the heading ("after 12. Nf3", "from your FEN"). */
   label: string;
   flipped?: boolean;
+  /** Start in this mode: an analysis board, or you playing White or Black against Stockfish. */
+  initialMode?: Mode;
+  /** Replaces the default heading ("Playing on <label>"). */
+  heading?: string;
   engine: StockfishEngine | null;
   onExit: () => void;
   exitLabel?: string;
@@ -36,11 +41,11 @@ function initialState(startFen: string, initialUci: string[] = []): ExploreState
 
 /** A playable board for "continue from here": move pieces for both sides to explore, or play
  * one side against Stockfish. The live engine can score the position and draw its top lines. */
-export function ExploreView({ startFen, initialUci, label, flipped: startFlipped = false, engine, onExit, exitLabel = "← Back to the game" }: Props) {
+export function ExploreView({ startFen, initialUci, label, flipped: startFlipped = false, initialMode = "both", heading, engine, onExit, exitLabel = "← Back to the game" }: Props) {
   const [state, setState] = useState(() => initialState(startFen, initialUci));
-  const [mode, setMode] = useState<Mode>("both");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [levelId, setLevelId] = useState<(typeof LEVELS)[number]["id"]>("club");
-  const [flipped, setFlipped] = useState(startFlipped);
+  const [flipped, setFlipped] = useState(startFlipped || initialMode === "b");
   const [selected, setSelected] = useState<string | null>(null);
   const [promoting, setPromoting] = useState<{ from: string; to: string } | null>(null);
   // The position the engine failed to answer (so we don't retry in a loop until the user asks).
@@ -136,6 +141,12 @@ export function ExploreView({ startFen, initialUci, label, flipped: startFlipped
   const bar = liveShown ? { cp: liveShown.cp === null ? null : sign * liveShown.cp, mate: liveShown.mate === null ? null : sign * liveShown.mate, depth: liveShown.depth } : null;
   const matedColor = result.text?.startsWith("Checkmate") ? turn : undefined;
   const rows = numbered(state);
+  const opponent = `Stockfish (${level.label})`;
+  const names = mode === "w" ? { white: "You", black: opponent } : mode === "b" ? { white: opponent, black: "You" } : { white: "White", black: "Black" };
+  const downloadPgn = () => {
+    const clean = (s: string) => s.replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "") || "player";
+    downloadText(`${clean(names.white)}_vs_${clean(names.black)}.pgn`, exploreToPgn(state, names));
+  };
 
   return (
     <section className="viewer explore">
@@ -144,7 +155,7 @@ export function ExploreView({ startFen, initialUci, label, flipped: startFlipped
           {exitLabel}
         </button>
         <div>
-          <h2>Playing on {label}</h2>
+          <h2>{heading ?? `Playing on ${label}`}</h2>
           <p className="muted">
             {mode === "both" ? "Move pieces for both sides to explore ideas." : `You play ${mode === "w" ? "White" : "Black"} against Stockfish (${level.label}).`} Click a piece and a square, or drag it.
           </p>
@@ -272,6 +283,9 @@ export function ExploreView({ startFen, initialUci, label, flipped: startFlipped
             ))}
           </div>
           <div className="viewer-actions">
+            <button className="btn btn-ghost" onClick={downloadPgn} disabled={state.moves.length === 0} title="Download the moves as a PGN file, to analyze or keep">
+              Download PGN
+            </button>
             <button
               className="btn btn-ghost"
               onClick={() => void navigator.clipboard?.writeText(fen)}
