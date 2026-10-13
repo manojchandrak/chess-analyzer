@@ -292,6 +292,12 @@ function App() {
           <button className="link-button" onClick={() => openInfo("privacy")}>
             Privacy
           </button>
+          <a className="link-button" href={`${import.meta.env.BASE_URL}legends/`}>
+            Legend profiles
+          </a>
+          <a className="link-button" href={`${import.meta.env.BASE_URL}openings/`}>
+            Opening guides
+          </a>
           <InstallApp />
         </nav>
       </footer>

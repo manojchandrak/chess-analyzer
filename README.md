@@ -107,6 +107,14 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Games are kept under site-prefixed ids (`lichess:...`, `chesscom:...`) on this device, and saved to your
   account when logged in so they follow you between devices (the newest change wins per game; up to 300
   recent games plus all favourites).
+- **Pages for search engines**: the app is a single page, so `npm run build` also writes real, static pages into
+  the build (`scripts/prerender.ts`, page code in `src/lib/seoPages.ts`): a profile for each of the 12 legends
+  (style, traits, results, favourite openings, a famous game), a guide for each of the 11 opening drills (main
+  line, the idea behind each move, which legends played it), two index pages, `sitemap.xml` and `robots.txt`.
+  They are built only from the data the app already ships, link into the app (`#/legends/morphy`, `#/drills`)
+  and carry titles, descriptions, canonical links and structured data. Set the `SITE_URL` Actions variable
+  (for example `https://yourdomain.com`) when the site moves to its own domain, and submit `sitemap.xml` in
+  Google Search Console. (`robots.txt` only takes effect at a domain's root.)
 - **Install it as an app, and use it offline**: a web app manifest, icons and a small service worker make the
   site installable (Android/desktop: the **Install app** link in the footer or the browser menu; iPhone/iPad:
   Share, Add to Home Screen). After one visit the page, its scripts, the Stockfish engine, piece images and the
