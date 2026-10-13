@@ -95,12 +95,18 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   [docs/forum-setup.md](docs/forum-setup.md). `VITE_FORUM_MOCK=1 npm run dev` tries the screens
   with an in-memory demo (no account or project needed).
 - **Saved to your account**: when you are logged in, your Lichess / Chess.com usernames, the
-  load options, board and voice settings, drill and puzzle progress, and the per-game ratings
-  used for sorting are saved to your account and follow you to other devices. Each person can
+  load options, board and voice settings, drill and puzzle progress, game history and favourites, and the
+  per-game ratings used for sorting are saved to your account and follow you to other devices. Each person can
   only read and change their own saved data (a database rule, not a page rule). Merging is
   safe: progress from two devices is combined, and one person's data is cleared from a shared
   browser before someone else's is loaded. Full engine reviews stay in the browser only, as
   they are large and can be recomputed. Not logged in, nothing leaves the browser.
+- **Game history and favourites**: every Lichess or Chess.com game you open for analysis is added to the
+  **History** tab (newest first), and the ☆ next to any game in a list or in the viewer marks it as a
+  favourite. Filter by favourites, by site, or search players and openings; reopen a game with one click.
+  Games are kept under site-prefixed ids (`lichess:...`, `chesscom:...`) on this device, and saved to your
+  account when logged in so they follow you between devices (the newest change wins per game; up to 300
+  recent games plus all favourites).
 - **Play a game**: on the Analyze tab, **Play as White** or **Play as Black** starts a new game against Stockfish
   (Beginner, Club or Strong) from the standard position. Take moves back, ask for the best move, and
   **Download PGN** to keep the game or paste it into Analyze a game.

@@ -19,6 +19,8 @@ import type { Traits } from "./lib/profile";
 import { buildHash, isShareable, parseHash, type Route, type Tab } from "./lib/route";
 import { AnalyticsConsent } from "./components/AnalyticsConsent";
 import { NewGame } from "./components/NewGame";
+import { HistoryView } from "./components/HistoryView";
+import { recordOpened } from "./lib/history";
 import { START_FEN } from "./lib/explore";
 import { AboutPage, PrivacyPage } from "./components/InfoPages";
 import { fetchLichessGame } from "./lib/sources";
@@ -39,6 +41,7 @@ const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "legends", label: "Legends" },
   { id: "pgn", label: "Analyze a game" },
   { id: "drills", label: "Drills" },
+  { id: "history", label: "History" },
   { id: "forum", label: "Community" },
 ];
 
@@ -94,6 +97,7 @@ function App() {
       const own = record.source === "lichess" || record.source === "chesscom";
       setViewPly(ply ?? 0);
       setViewing({ game: parseRecord(record), record, heading, autoAnalyzeDepth: own ? 12 : undefined, initialPly: ply });
+      recordOpened(record);
       window.scrollTo(0, 0);
     } catch {
       alert("This game's moves couldn't be read.");
@@ -254,6 +258,7 @@ function App() {
       </div>
 
       {/* The forum and login mount only while they are open, so visitors who never use them cost the forum nothing. */}
+      {!viewing && current === "history" && <HistoryView onOpen={(g) => openRecord(g)} />}
       {!viewing && current === "forum" && <Forum threadId={thread} onOpenThread={setThread} onLogin={openLogin} />}
       {!viewing && current === "login" && <LoginPage onDone={() => setTab(returnTab.current)} />}
       {!viewing && current === "about" && <AboutPage onClose={() => setTab("mine")} />}

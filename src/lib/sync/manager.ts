@@ -26,7 +26,12 @@ export interface SyncOptions {
   /** Called after the account's data was written into this device's storage, so the screens can re-read it. */
   onApplied?: () => void;
   onStatus?: (status: SyncStatus) => void;
+  /** The clock, for tests. */
+  now?: () => number;
 }
+
+/** After a failed save, wait this long before the background check tries again. */
+const RETRY_AFTER_MS = 60_000;
 
 /** After a person deletes their saved data from their account: forget this device's copy too, so it isn't saved again. */
 export function clearSavedOnDevice(storage: SyncStorage): void {
@@ -39,8 +44,9 @@ export function clearSavedOnDevice(storage: SyncStorage): void {
   }
 }
 
-export function createSync({ backend, storage, userId, onApplied, onStatus }: SyncOptions) {
+export function createSync({ backend, storage, userId, onApplied, onStatus, now = Date.now }: SyncOptions) {
   let unavailable = false;
+  let retryAt = 0;
   let running: Promise<void> | null = null;
   let rerun = false;
 
@@ -100,11 +106,17 @@ export function createSync({ backend, storage, userId, onApplied, onStatus }: Sy
       return running;
     }
     running = once()
+      .then(() => {
+        retryAt = 0;
+      })
       .catch((e: unknown) => {
         if (e instanceof SyncUnavailableError) {
           unavailable = true;
           onStatus?.("unavailable");
-        } else onStatus?.("error");
+        } else {
+          retryAt = now() + RETRY_AFTER_MS;
+          onStatus?.("error");
+        }
       })
       .finally(() => {
         running = null;
@@ -119,7 +131,7 @@ export function createSync({ backend, storage, userId, onApplied, onStatus }: Sy
   return {
     run,
     /** Whether something changed on this device since it was last saved to the account. */
-    hasChanges: () => !unavailable && changedHere(readLocal(), readMeta().fingerprints).length > 0,
+    hasChanges: () => !unavailable && now() >= retryAt && changedHere(readLocal(), readMeta().fingerprints).length > 0,
     isUnavailable: () => unavailable,
   };
 }
