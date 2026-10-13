@@ -12,6 +12,8 @@ export interface Route {
   chesscom?: string;
   /** Game id: "lichess:<id>" or a legend game ("morphy-12"). */
   game?: string;
+  /** A game carried inside the link itself (see shareLink.ts), for games that have no id to look up. */
+  data?: string;
   ply?: number;
 }
 
@@ -30,8 +32,10 @@ export function parseHash(hash: string): Route {
   }
   const game = params.get("g")?.trim();
   if (game) route.game = game;
+  const data = params.get("d")?.trim();
+  if (data && /^[A-Za-z0-9_-]{1,8000}$/.test(data)) route.data = data;
   const ply = Number(params.get("ply"));
-  if (game && Number.isInteger(ply) && ply > 0) route.ply = ply;
+  if ((game || route.data) && Number.isInteger(ply) && ply > 0) route.ply = ply;
   return route;
 }
 
@@ -41,6 +45,9 @@ export function buildHash(route: Route): string {
   if (route.chesscom) params.set("chesscom", route.chesscom);
   if (route.game) {
     params.set("g", route.game);
+    if (route.ply) params.set("ply", String(route.ply));
+  } else if (route.data) {
+    params.set("d", route.data);
     if (route.ply) params.set("ply", String(route.ply));
   }
   const path = route.tab === "legends" && route.legend ? `legends/${encodeURIComponent(route.legend)}` : route.tab === "forum" && route.thread ? `forum/${encodeURIComponent(route.thread)}` : route.tab;

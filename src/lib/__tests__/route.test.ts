@@ -6,6 +6,13 @@ describe("parseHash", () => {
     expect(parseHash("")).toEqual({ tab: "mine" });
     expect(parseHash("#/nonsense")).toEqual({ tab: "mine" });
   });
+  it("reads a game carried in the link, with its move", () => {
+    expect(parseHash("#/mine?d=abc_DEF-123&ply=9")).toEqual({ tab: "mine", data: "abc_DEF-123", ply: 9 });
+  });
+  it("ignores a carried game that has characters a link of ours never contains", () => {
+    expect(parseHash("#/mine?d=abc$def").data).toBeUndefined();
+    expect(parseHash("#/mine?d=" + "a".repeat(8001)).data).toBeUndefined();
+  });
   it("reads the About and Privacy pages", () => {
     expect(parseHash("#/about")).toEqual({ tab: "about" });
     expect(parseHash("#/privacy")).toEqual({ tab: "privacy" });

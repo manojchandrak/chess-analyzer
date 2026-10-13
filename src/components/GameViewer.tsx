@@ -462,7 +462,7 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
             <button
               className="btn btn-ghost"
               disabled={!shareUrl}
-              title={shareUrl ? "Copy a link to this game at this move" : "Only Lichess games and the legends' games can be shared by link"}
+              title={shareUrl ? "Copy a link to this game at this move. Whoever opens it gets the game and the review runs on their device." : "Open a game to get a link to it"}
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(shareUrl as string);
