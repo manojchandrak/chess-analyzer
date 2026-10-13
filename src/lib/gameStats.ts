@@ -3,6 +3,7 @@
 // so they survive reloads; every review, from any screen, adds to the same store.
 import { useSyncExternalStore } from "react";
 import type { AnalysisResult } from "./analyze";
+import { scoreFor, type GameRecord, type TimeClass } from "./games";
 import { estimateRating } from "./rating";
 import { reportStorageProblem } from "./store";
 
@@ -16,6 +17,18 @@ export interface GameStats {
   inaccuracies: number;
   mistakes: number;
   blunders: number;
+  /** When the game was played ("2026-10-12", or just the year or month when that is all the site gives). */
+  date?: string;
+  /** How the game went for the player: 1 (won), 0.5 or 0. */
+  score?: 0 | 0.5 | 1;
+  /** The game's time control, so progress can be looked at for blitz or rapid alone. */
+  tc?: TimeClass;
+}
+
+/** Adds the game's date, result and time control to its stats, so progress over time can be drawn from them. */
+export function withGameMeta(s: GameStats, game: Pick<GameRecord, "date" | "result" | "playerColor" | "timeClass">): GameStats {
+  const score = game.playerColor ? scoreFor(game.result, game.playerColor) : null;
+  return { ...s, ...(game.date ? { date: game.date } : {}), ...(score === 0 || score === 0.5 || score === 1 ? { score } : {}), ...(game.timeClass ? { tc: game.timeClass } : {}) };
 }
 
 const KEY = "chess-analyzer:stats:v1";
@@ -65,6 +78,14 @@ export function setGameStats(gameId: string, value: GameStats): void {
     setTimeout(flush, 250);
   }
   pending.set(gameId, value);
+}
+
+/** Fills in the date, result and time control for stats saved before those were recorded, as their games load. */
+export function backfillGameMeta(games: GameRecord[]): void {
+  for (const g of games) {
+    const s = stats.get(g.id);
+    if (s && s.date === undefined && g.date) setGameStats(g.id, withGameMeta(s, g));
+  }
 }
 
 function flush(): void {

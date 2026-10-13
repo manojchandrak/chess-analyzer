@@ -765,3 +765,12 @@ th.num .th-sort { justify-content: flex-end; }
 .drill-chip-count { text-transform: none; }
 
 .offline-note { margin: 0 auto 12px; max-width: 760px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.9rem; text-align: center; }
+
+/* ---------- Progress ---------- */
+.progress { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.progress h2, .progress h3 { margin: 6px 0 0; }
+.progress p { margin: 0; }
+.progress-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.progress-card { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.progress-value { font-size: 1.6rem; line-height: 1.2; }
+.progress .chips .chip { text-transform: none; }

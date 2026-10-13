@@ -15,6 +15,7 @@ import { buildTips } from "../lib/tips";
 import { openingAccuracy } from "../lib/openingStats";
 import { collectPuzzles } from "../lib/puzzles";
 import { addMistakes } from "../lib/mistakes";
+import { backfillGameMeta } from "../lib/gameStats";
 import { buildTrends } from "../lib/trends";
 import { GameList } from "./GameList";
 import { PuzzleDrill } from "./PuzzleDrill";
@@ -95,6 +96,10 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
   const gameMap = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
   const trends = useMemo(() => buildTrends(filtered, reviews), [filtered, reviews]);
   const puzzles = useMemo(() => collectPuzzles(filteredReviews, gameMap), [filteredReviews, gameMap]);
+  // Older saved ratings get their game's date, result and time control as the games load, so Progress can draw them.
+  useEffect(() => {
+    backfillGameMeta(games);
+  }, [games]);
   // Every reviewed game feeds the permanent bank of mistakes (practised under Drills), not just the ones shown here.
   useEffect(() => {
     addMistakes(collectPuzzles([...reviews.values()], gameMap, Number.POSITIVE_INFINITY));

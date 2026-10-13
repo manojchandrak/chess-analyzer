@@ -21,6 +21,7 @@ import { AnalyticsConsent } from "./components/AnalyticsConsent";
 import { NewGame } from "./components/NewGame";
 import { InstallApp, OfflineNote } from "./components/InstallApp";
 import { HistoryView } from "./components/HistoryView";
+import { ProgressView } from "./components/ProgressView";
 import { recordOpened } from "./lib/history";
 import { decodeSharedGame, encodeSharedGame } from "./lib/shareLink";
 import { START_FEN } from "./lib/explore";
@@ -44,6 +45,7 @@ const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "pgn", label: "Analyze a game" },
   { id: "drills", label: "Drills" },
   { id: "history", label: "History" },
+  { id: "progress", label: "Progress" },
   { id: "forum", label: "Community" },
 ];
 
@@ -278,6 +280,7 @@ function App() {
 
       {/* The forum and login mount only while they are open, so visitors who never use them cost the forum nothing. */}
       {!viewing && current === "history" && <HistoryView onOpen={(g) => openRecord(g)} />}
+      {!viewing && current === "progress" && <ProgressView onOpen={(g) => openRecord(g)} />}
       {!viewing && current === "forum" && <Forum threadId={thread} onOpenThread={setThread} onLogin={openLogin} />}
       {!viewing && current === "login" && <LoginPage onDone={() => setTab(returnTab.current)} />}
       {!viewing && current === "about" && <AboutPage onClose={() => setTab("mine")} />}

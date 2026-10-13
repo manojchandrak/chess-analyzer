@@ -7,7 +7,7 @@ import type { MoveQuality } from "./accuracy.ts";
 import { analyzeGame, analyzeWithEvals, evalsFromWhitePerspective, type Phase } from "./analyze.ts";
 import type { StockfishEngine } from "./engine.ts";
 import { ecoFamily } from "./eco.ts";
-import { setGameStats, statsFromAnalysis, type GameStats } from "./gameStats.ts";
+import { setGameStats, statsFromAnalysis, withGameMeta, type GameStats } from "./gameStats.ts";
 import { scoreFor, type GameRecord } from "./games.ts";
 import { loadOpenings, openingsAlong } from "./openings.ts";
 import { parseRecord } from "./pgn.ts";
@@ -79,7 +79,7 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
   const key = `${game.id}:${game.evals ? "lichess" : depth}`;
   const hit = await cached(key);
   if (hit) {
-    setGameStats(hit.gameId, hit.stats);
+    setGameStats(hit.gameId, withGameMeta(hit.stats, game));
     return hit;
   }
 
@@ -127,7 +127,7 @@ export async function reviewGame(game: GameRecord, engine: StockfishEngine | nul
   const stats = statsFromAnalysis(analysis, color);
   const review: GameReview = { gameId: game.id, color, score, family: ecoFamily(game.eco), clockInitial: game.clockInitial, moves, engine: game.evals ? "lichess" : "stockfish", stats };
   await store(key, review);
-  setGameStats(game.id, stats);
+  setGameStats(game.id, withGameMeta(stats, game));
   return review;
 }
 
