@@ -56,15 +56,18 @@ if (typeof ServiceWorkerGlobalScope !== "undefined" && self instanceof ServiceWo
     return hit || (await refresh) || Response.error();
   }
 
-  // The page: the network first (so updates arrive), the saved copy when offline or slow.
+  // A page: the network first (so updates arrive), the saved copy when offline or slow. The app's home page is saved under
+  // the scope's own address; the static guide pages (legends, openings) under their own, with the app as the last resort.
   async function navigation(request) {
     const cache = await caches.open(SHELL_CACHE);
+    const isApp = new URL(request.url).pathname === scope;
+    const key = isApp ? scopeUrl : request.url.split("#")[0];
     try {
       const res = await Promise.race([fetch(request), new Promise((_, reject) => setTimeout(() => reject(new Error("slow")), NAV_TIMEOUT_MS))]);
-      if (cacheable(res)) cache.put(scopeUrl, res.clone());
+      if (cacheable(res)) cache.put(key, res.clone());
       return res;
     } catch {
-      return (await cache.match(scopeUrl)) || Response.error();
+      return (await cache.match(key)) || (await cache.match(scopeUrl)) || Response.error();
     }
   }
 
