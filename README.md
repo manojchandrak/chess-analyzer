@@ -107,6 +107,11 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Games are kept under site-prefixed ids (`lichess:...`, `chesscom:...`) on this device, and saved to your
   account when logged in so they follow you between devices (the newest change wins per game; up to 300
   recent games plus all favourites).
+- **Share any game by link**: **Copy link** in the game viewer works for every game. Lichess and legend games
+  link by id; Chess.com games, pasted PGNs and anything else carry their moves, players, ratings and result
+  inside the link itself (`#/mine?d=...&ply=14`), so there is nothing to store or look up. Whoever opens it
+  gets the game at that move and the Stockfish review runs on their own device. Links are checked move by
+  move, so a cut-off or tampered link shows a message instead of loading.
 - **Play a game**: on the Analyze tab, **Play as White** or **Play as Black** starts a new game against Stockfish
   (Beginner, Club or Strong) from the standard position. Take moves back, ask for the best move, and
   **Download PGN** to keep the game or paste it into Analyze a game.

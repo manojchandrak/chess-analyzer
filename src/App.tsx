@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { Drills } from "./components/Drills";
 import { GameViewer } from "./components/GameViewer";
@@ -21,6 +21,7 @@ import { AnalyticsConsent } from "./components/AnalyticsConsent";
 import { NewGame } from "./components/NewGame";
 import { HistoryView } from "./components/HistoryView";
 import { recordOpened } from "./lib/history";
+import { decodeSharedGame, encodeSharedGame } from "./lib/shareLink";
 import { START_FEN } from "./lib/explore";
 import { AboutPage, PrivacyPage } from "./components/InfoPages";
 import { fetchLichessGame } from "./lib/sources";
@@ -55,10 +56,14 @@ async function loadSharedGame(id: string, signal: AbortSignal): Promise<GameReco
   return withMoves(record);
 }
 
+const CARRIED_LINK_ERROR = "That link's game couldn't be read. It may have been cut off when it was copied.";
+
 function App() {
   const [initial] = useState(() => parseHash(window.location.hash));
   const [tab, setTab] = useState<Tab>(initial.tab);
-  const [viewing, setViewing] = useState<Viewing | null>(null);
+  // A link that carries its game inside it opens straight away (no lookup needed).
+  const [carriedGame] = useState(() => (initial.data ? decodeSharedGame(initial.data) : null));
+  const [viewing, setViewing] = useState<Viewing | null>(() => (carriedGame ? { game: carriedGame, record: null, autoAnalyzeDepth: 12, initialPly: initial.ply } : null));
   const [legendId, setLegendId] = useState<string | null>(initial.legend ?? null);
   const [thread, setThread] = useState<string | null>(initial.thread ?? null);
   const { status: forumStatus, recovering } = useAuth();
@@ -82,8 +87,8 @@ function App() {
   const [pgnText, setPgnText] = useState("");
   const [depth, setDepth] = useState(14);
   const [pgnError, setPgnError] = useState<string | null>(null);
-  const [shared, setShared] = useState<{ loading: boolean; error: string | null }>({ loading: !!initial.game, error: null });
-  const [viewPly, setViewPly] = useState(0);
+  const [shared, setShared] = useState<{ loading: boolean; error: string | null }>({ loading: !!initial.game, error: initial.data && !carriedGame ? CARRIED_LINK_ERROR : null });
+  const [viewPly, setViewPly] = useState(carriedGame ? (initial.ply ?? 0) : 0);
   // Usernames from the link, and the ones the user last loaded (kept in the link so it can be shared).
   const [names, setNames] = useState<{ lichess?: string; chesscom?: string }>({ lichess: initial.lichess, chesscom: initial.chesscom });
   const [engine] = useState(getEngine);
@@ -122,7 +127,12 @@ function App() {
 
   // Keep the URL describing what's on screen, so it can be copied and shared.
   const shareable = viewing?.record && isShareable(viewing.record.id) ? viewing.record.id : undefined;
-  const route: Route = { tab, legend: legendId ?? undefined, thread: tab === "forum" ? (thread ?? undefined) : undefined, lichess: names.lichess, chesscom: names.chesscom, game: shareable, ply: shareable && viewPly > 0 ? viewPly : undefined };
+  // Games with no id to look up (Chess.com games, pasted PGNs) are shared by carrying their moves in the link.
+  const viewingGame = viewing?.game;
+  const viewingExplore = viewing?.exploreFen;
+  const carried = useMemo(() => (viewingGame && !shareable && !viewingExplore ? encodeSharedGame(viewingGame) : null), [viewingGame, shareable, viewingExplore]);
+  const linkedGame = shareable ?? carried;
+  const route: Route = { tab, legend: legendId ?? undefined, thread: tab === "forum" ? (thread ?? undefined) : undefined, lichess: names.lichess, chesscom: names.chesscom, game: shareable, data: carried ?? undefined, ply: linkedGame && viewPly > 0 ? viewPly : undefined };
   const hash = buildHash(route);
   useEffect(() => {
     if (shared.loading) return; // don't overwrite the link while its game is still loading
@@ -140,6 +150,13 @@ function App() {
       setThread(r.thread ?? null);
       setNames({ lichess: r.lichess, chesscom: r.chesscom });
       setViewing(null);
+      if (r.data) {
+        const game = decodeSharedGame(r.data);
+        if (game) {
+          setViewPly(r.ply ?? 0);
+          setViewing({ game, record: null, autoAnalyzeDepth: 12, initialPly: r.ply });
+        } else setShared({ loading: false, error: CARRIED_LINK_ERROR });
+      }
       if (r.game) {
         setShared({ loading: true, error: null });
         const controller = new AbortController();
@@ -179,7 +196,7 @@ function App() {
     }
   }
 
-  const shareUrl = shareable ? `${window.location.origin}${window.location.pathname}${hash}` : null;
+  const shareUrl = linkedGame ? `${window.location.origin}${window.location.pathname}${hash}` : null;
 
   return (
     <div className="app">
