@@ -40,9 +40,9 @@ The "Continue with Google / GitHub" buttons only work for providers you switch o
 
 Open **Authentication, URL Configuration**:
 
-- **Site URL**: `https://manojchandrak.github.io/chess-analyzer/`
-- **Redirect URLs**: add `https://manojchandrak.github.io/chess-analyzer/**` and, for local work,
-  `http://localhost:5174/chess-analyzer/**`
+- **Site URL**: `https://mychessanalyzer.com/`
+- **Redirect URLs**: add `https://mychessanalyzer.com/**` and, for local work,
+  `http://localhost:5174/**`
 
 Confirmation emails, password-reset emails and Google/GitHub sign-in send people back to these addresses.
 

@@ -6,7 +6,7 @@ their games, upload any PGN for a Stockfish breakdown of accuracy by
 opening/middlegame/endgame, or train each phase with drills. Everything runs
 in your browser.
 
-Live at: https://manojchandrak.github.io/chess-analyzer/
+Live at: https://mychessanalyzer.com/
 
 ## Features
 
@@ -120,7 +120,7 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   line, the idea behind each move, which legends played it), two index pages, `sitemap.xml` and `robots.txt`.
   They are built only from the data the app already ships, link into the app (`#/legends/morphy`, `#/drills`)
   and carry titles, descriptions, canonical links and structured data. Set the `SITE_URL` Actions variable
-  (for example `https://yourdomain.com`) when the site moves to its own domain, and submit `sitemap.xml` in
+  (`https://mychessanalyzer.com`), and submit `sitemap.xml` in
   Google Search Console. (`robots.txt` only takes effect at a domain's root.)
 - **Install it as an app, and use it offline**: a web app manifest, icons and a small service worker make the
   site installable (Android/desktop: the **Install app** link in the footer or the browser menu; iPhone/iPad:
