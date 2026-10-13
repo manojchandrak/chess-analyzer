@@ -107,6 +107,13 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Games are kept under site-prefixed ids (`lichess:...`, `chesscom:...`) on this device, and saved to your
   account when logged in so they follow you between devices (the newest change wins per game; up to 300
   recent games plus all favourites).
+- **Install it as an app, and use it offline**: a web app manifest, icons and a small service worker make the
+  site installable (Android/desktop: the **Install app** link in the footer or the browser menu; iPhone/iPad:
+  Share, Add to Home Screen). After one visit the page, its scripts, the Stockfish engine, piece images and the
+  opening and legend data are kept on the device, so the board, drills and reviews work without a connection.
+  The worker only touches this site's own files; calls to Lichess, Chess.com and Supabase always use the
+  network. It is registered in production builds only. Bump `VERSION` in `public/sw.js` to force a refresh of
+  the saved data.
 - **My mistakes** (Drills tab): every time Stockfish reviews one of your Lichess or Chess.com games, the
   positions where you made a mistake or blunder are saved to a permanent bank (the 400 most recent). Practise
   finding the move you missed, worst first, on the same spaced-repetition schedule as the other drills: solve
