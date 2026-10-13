@@ -101,6 +101,12 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   safe: progress from two devices is combined, and one person's data is cleared from a shared
   browser before someone else's is loaded. Full engine reviews stay in the browser only, as
   they are large and can be recomputed. Not logged in, nothing leaves the browser.
+- **Progress** (tab): your play over time, drawn from the games Stockfish has reviewed. Cards for average
+  accuracy, estimated performance, blunders per game and score, each compared with your previous 20 games;
+  monthly charts of accuracy, performance, blunders, mistakes and score; your most accurate game and the one
+  with the most brilliant moves; and your latest games. Filter by site, time control and period. Each game's
+  date, result and time control are saved with its review numbers (older ones are filled in from the history
+  list or when the games load), and the numbers sync to your account when logged in.
 - **Game history and favourites**: every Lichess or Chess.com game you open for analysis is added to the
   **History** tab (newest first), and the ☆ next to any game in a list or in the viewer marks it as a
   favourite. Filter by favourites, by site, or search players and openings; reopen a game with one click.

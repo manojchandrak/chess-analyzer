@@ -124,7 +124,7 @@ export function PrivacyPage({ onClose }: { onClose: () => void }) {
           <a href="https://supabase.com" target="_blank" rel="noreferrer">
             Supabase
           </a>
-          : your email address, your username, and your saved usernames, settings, drill and puzzle progress, game history and favourites (the games you opened, with their players and moves), the positions from your reviewed games where you made mistakes, and game ratings. Passwords are sent to Supabase's sign-in service; this site never stores them. Signing in with Google or GitHub shares your email and profile name with Supabase.
+          : your email address, your username, and your saved usernames, settings, drill and puzzle progress, game history and favourites (the games you opened, with their players and moves), the positions from your reviewed games where you made mistakes, and the numbers from each review (accuracy, mistakes, result, date and time control) that your progress is drawn from. Passwords are sent to Supabase's sign-in service; this site never stores them. Signing in with Google or GitHub shares your email and profile name with Supabase.
         </li>
         <li>Your saved data can be read and changed only by you; a database rule enforces this. Your username and your forum posts are public. Your email address is not shown to anyone.</li>
         <li>Full engine reviews are not saved to your account; they stay in this browser.</li>
