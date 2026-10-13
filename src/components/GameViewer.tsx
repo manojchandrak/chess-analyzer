@@ -10,6 +10,8 @@ import { CLASS_META } from "../lib/classify";
 import { uciSquares, type BoardArrow } from "../lib/boardText";
 import { EngineError, type StockfishEngine } from "../lib/engine";
 import { setGameStats, statsFromAnalysis } from "../lib/gameStats";
+import { addMistakes } from "../lib/mistakes";
+import { mistakesFromAnalysis } from "../lib/mistakeCore";
 import { toPgn, type GameRecord } from "../lib/games";
 import { loadOpenings, openingsAlong, type OpeningName } from "../lib/openings";
 import type { ParsedGame } from "../lib/pgn";
@@ -121,7 +123,10 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
         const result = await analyzeGame(game, engine, atDepth, (done, total) => setProgress({ done, total }), { multiPv: 3, bookPlies });
         const key = record ? `${record.id}:${atDepth}` : null;
         if (key) analysisCache.set(key, result);
-        if (record?.playerColor) setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
+        if (record?.playerColor) {
+          setGameStats(record.id, statsFromAnalysis(result, record.playerColor));
+          addMistakes(mistakesFromAnalysis(result, record, record.playerColor));
+        }
         setAnalysis(result);
         setFromStockfish(true);
       } catch (e) {

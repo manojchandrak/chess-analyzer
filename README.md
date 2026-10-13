@@ -95,8 +95,8 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   [docs/forum-setup.md](docs/forum-setup.md). `VITE_FORUM_MOCK=1 npm run dev` tries the screens
   with an in-memory demo (no account or project needed).
 - **Saved to your account**: when you are logged in, your Lichess / Chess.com usernames, the
-  load options, board and voice settings, drill and puzzle progress, game history and favourites, and the
-  per-game ratings used for sorting are saved to your account and follow you to other devices. Each person can
+  load options, board and voice settings, drill and puzzle progress, game history and favourites, the positions from
+  your mistakes, and the per-game ratings used for sorting are saved to your account and follow you to other devices. Each person can
   only read and change their own saved data (a database rule, not a page rule). Merging is
   safe: progress from two devices is combined, and one person's data is cleared from a shared
   browser before someone else's is loaded. Full engine reviews stay in the browser only, as
@@ -107,6 +107,11 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   Games are kept under site-prefixed ids (`lichess:...`, `chesscom:...`) on this device, and saved to your
   account when logged in so they follow you between devices (the newest change wins per game; up to 300
   recent games plus all favourites).
+- **My mistakes** (Drills tab): every time Stockfish reviews one of your Lichess or Chess.com games, the
+  positions where you made a mistake or blunder are saved to a permanent bank (the 400 most recent). Practise
+  finding the move you missed, worst first, on the same spaced-repetition schedule as the other drills: solve
+  one cleanly and it returns after 1, 3, 7, 16 and then 35 days, miss it and it comes back in minutes. The
+  bank and its schedule are saved to your account when logged in, so they follow you between devices.
 - **Share any game by link**: **Copy link** in the game viewer works for every game. Lichess and legend games
   link by id; Chess.com games, pasted PGNs and anything else carry their moves, players, ratings and result
   inside the link itself (`#/mine?d=...&ply=14`), so there is nothing to store or look up. Whoever opens it

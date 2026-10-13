@@ -164,6 +164,22 @@ describe("keeping a device and an account in step", () => {
     expect(onApplied).toHaveBeenCalled();
   });
 
+  it("saves the mistake bank and its practice schedule to the account and restores both on another device", async () => {
+    const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const mistake = { id: "lichess:abc#7", gameId: "lichess:abc", fen: START, color: "w", played: "a3", best: "e4", cpLoss: 200, quality: "blunder", opponent: "Bob", date: "2026-10-01", addedAt: 1000 };
+    const schedule = { "mistake:lichess:abc#7": { box: 2, attempts: 3, clean: 1, last: 5000, due: 9_999_999_999_999, lastResult: "clean" } };
+    const backend = createMemoryBackend();
+    const userId = await signedIn(backend, "Alice");
+    await setup(backend, fakeStorage({ [SYNC_KEYS.mistakes]: JSON.stringify({ [mistake.id]: mistake }), [SYNC_KEYS.drills]: JSON.stringify(schedule) }), userId).sync.run();
+
+    const phone = fakeStorage();
+    const { sync, onApplied } = setup(backend, phone, userId);
+    await sync.run();
+    expect(Object.keys(JSON.parse(phone.data.get(SYNC_KEYS.mistakes)!))).toEqual(["lichess:abc#7"]);
+    expect(JSON.parse(phone.data.get(SYNC_KEYS.drills)!)["mistake:lichess:abc#7"].box).toBe(2);
+    expect(onApplied).toHaveBeenCalled();
+  });
+
   it("only lets people see their own saved data", async () => {
     const backend = createMemoryBackend();
     const alice = await signedIn(backend, "Alice");
