@@ -2,7 +2,7 @@
 // are safe to ship: what each person can read or change is decided by the row-level security rules in
 // supabase/schema.sql, not by this code.
 import type { SupabaseClient, Session as SbSession } from "@supabase/supabase-js";
-import type { AuthEvent, CategoryId, ForumBackend, OAuthProvider, Profile, Reply, Session, Thread } from "./types.ts";
+import { SyncUnavailableError, type AuthEvent, type CategoryId, type ForumBackend, type OAuthProvider, type Profile, type Reply, type Session, type Thread } from "./types.ts";
 import { validateEmail, validatePassword, validateReply, validateThreadBody, validateTitle, validateUsername } from "./validation.ts";
 
 // ---- rows as the database returns them ----
@@ -86,6 +86,12 @@ export function enabledProviders(settings: unknown): OAuthProvider[] {
   return (["google", "github"] as const).filter((p) => external?.[p] === true);
 }
 
+/** Supabase's error for the saved-data table, with "the table doesn't exist yet" told apart so the app can quietly stop trying. */
+export function userDataError(error: { message?: string; code?: string } | null | undefined): Error {
+  const missing = error?.code === "42P01" || error?.code === "PGRST205" || /could not find the table|relation .* does not exist/i.test(error?.message ?? "");
+  return missing ? new SyncUnavailableError() : friendlyError(error, "Couldn't save your data. Please try again.");
+}
+
 const THREAD_SELECT = "*, author:profiles!forum_threads_author_id_fkey(username)";
 const REPLY_SELECT = "*, author:profiles!forum_replies_author_id_fkey(username)";
 
@@ -150,6 +156,19 @@ export async function createSupabaseBackend(url: string, anonKey: string): Promi
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw friendlyError(error);
+    },
+    async loadUserData() {
+      const { data, error } = await supabase.from("user_data").select("key, value, updated_at");
+      if (error) throw userDataError(error);
+      return Object.fromEntries((data ?? []).map((row) => [row.key as string, { value: row.value as unknown, updatedAt: row.updated_at as string }]));
+    },
+    async saveUserData(key, value) {
+      const { data: auth } = await supabase.auth.getSession();
+      const userId = auth.session?.user.id;
+      if (!userId) throw new Error("Log in to save your data.");
+      const { data, error } = await supabase.from("user_data").upsert({ user_id: userId, key, value }, { onConflict: "user_id,key" }).select("updated_at").single();
+      if (error) throw userDataError(error);
+      return data.updated_at as string;
     },
     async availableProviders() {
       try {

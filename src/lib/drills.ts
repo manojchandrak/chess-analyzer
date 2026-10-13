@@ -86,6 +86,12 @@ function read(): Progress {
 
 let current = read();
 
+/** Re-reads progress from browser storage, after saved data from the person's account was written into it. */
+export function reloadProgress(): void {
+  current = read();
+  listeners.forEach((l) => l());
+}
+
 export function recordResult(id: string, result: Result, now = Date.now()): void {
   const prev = current[id];
   const box = result === "clean" ? Math.min(5, (prev?.box ?? 0) + 1) : result === "solved" ? Math.min(prev?.box ?? 0, 1) : 0;

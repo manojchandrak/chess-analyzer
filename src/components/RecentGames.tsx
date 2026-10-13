@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { SYNCED_EVENT } from "../lib/sync/apply";
 import { useAutoReview } from "../hooks/useAutoReview";
 import type { StockfishEngine } from "../lib/engine";
 import type { GameRecord } from "../lib/games";
@@ -33,6 +34,15 @@ function savedOptions(): { count: number; auto: boolean } {
 export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecord) => void; engine: StockfishEngine | null }) {
   const [names, setNames] = useState(savedNames);
   const [options, setOptions] = useState(savedOptions);
+  // Usernames and options saved to the account arrive after login; show them without a reload.
+  useEffect(() => {
+    const refresh = () => {
+      setNames(savedNames());
+      setOptions(savedOptions());
+    };
+    window.addEventListener(SYNCED_EVENT, refresh);
+    return () => window.removeEventListener(SYNCED_EVENT, refresh);
+  }, []);
   const [games, setGames] = useState<GameRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);

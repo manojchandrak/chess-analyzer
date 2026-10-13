@@ -80,6 +80,13 @@ let current = read();
 const applySpeechStyle = () => setSpeechStyle({ voiceURI: current.voice, accent: current.accent, persona: current.persona });
 applySpeechStyle();
 
+/** Re-reads the preferences from browser storage, after saved data from the person's account was written into it. */
+export function reloadBoardPrefs(): void {
+  current = read();
+  applySpeechStyle();
+  listeners.forEach((l) => l());
+}
+
 export function setBoardPrefs(change: Partial<BoardPrefs>): void {
   current = { ...current, ...change };
   applySpeechStyle();

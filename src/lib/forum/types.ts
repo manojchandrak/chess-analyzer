@@ -51,6 +51,20 @@ export interface Reply {
   updatedAt: string;
 }
 
+/** One kind of a signed-in person's saved data (usernames, settings, progress...) and when it was last saved. */
+export interface UserDataEntry {
+  value: unknown;
+  updatedAt: string;
+}
+
+/** Saved data can't be used, for example because the database hasn't been given the `user_data` table yet. */
+export class SyncUnavailableError extends Error {
+  constructor(message = "Saving to your account isn't set up yet.") {
+    super(message);
+    this.name = "SyncUnavailableError";
+  }
+}
+
 export type AuthEvent = "SIGNED_IN" | "SIGNED_OUT" | "PASSWORD_RECOVERY" | "UPDATED";
 export type OAuthProvider = "google" | "github";
 
@@ -76,6 +90,12 @@ export interface ForumBackend {
   updatePassword(password: string): Promise<void>;
   signOut(): Promise<void>;
   updateUsername(username: string): Promise<Profile>;
+
+  // --- saved data (signed-in people only; each person sees only their own) ---
+  /** Everything the signed-in person has saved, by kind. Throws SyncUnavailableError if the database can't store it. */
+  loadUserData(): Promise<Record<string, UserDataEntry>>;
+  /** Saves one kind of data, replacing what was there, and returns when it was saved. */
+  saveUserData(key: string, value: unknown): Promise<string>;
 
   // --- forum ---
   listThreads(opts: { category?: CategoryId; page: number; pageSize: number }): Promise<ThreadList>;

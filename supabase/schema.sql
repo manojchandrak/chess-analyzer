@@ -240,6 +240,52 @@ grant update (body) on public.forum_replies to authenticated;
 grant delete on public.forum_replies to authenticated;
 
 -- ---------------------------------------------------------------------------
+-- Saved data: each signed-in person's usernames, settings, drill progress, puzzle progress and game ratings,
+-- so they follow the account from device to device. One row per person per kind of data.
+-- ---------------------------------------------------------------------------
+create table if not exists public.user_data (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  key text not null,
+  value jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, key),
+  constraint user_data_key_allowed check (key in ('usernames', 'options', 'board', 'drills', 'stats', 'puzzles')),
+  constraint user_data_value_size check (octet_length(value::text) <= 2000000)
+);
+
+create or replace function public.user_data_touch() returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists user_data_touch on public.user_data;
+create trigger user_data_touch before insert or update on public.user_data for each row execute function public.user_data_touch();
+
+alter table public.user_data enable row level security;
+
+drop policy if exists "People read their own saved data" on public.user_data;
+create policy "People read their own saved data" on public.user_data for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "People save their own data" on public.user_data;
+create policy "People save their own data" on public.user_data for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "People update their own saved data" on public.user_data;
+create policy "People update their own saved data" on public.user_data for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists "People delete their own saved data" on public.user_data;
+create policy "People delete their own saved data" on public.user_data for delete to authenticated using (user_id = auth.uid());
+
+-- Nobody who is signed out can touch it. Signed-in people can write the three columns an upsert names; the timestamp is
+-- set by the trigger, and the policies above stop anyone from reading or changing another person's row.
+revoke all on public.user_data from anon, authenticated;
+grant select on public.user_data to authenticated;
+grant insert (user_id, key, value) on public.user_data to authenticated;
+grant update (user_id, key, value) on public.user_data to authenticated;
+grant delete on public.user_data to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- Making someone a moderator (run by hand, as the project owner):
 --   update public.profiles set is_admin = true where username = 'YourUsername';
 -- ---------------------------------------------------------------------------

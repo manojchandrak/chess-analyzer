@@ -7,6 +7,7 @@ import { buildProfile, similarity, type Traits } from "../lib/profile";
 import { EngineError } from "../lib/engine";
 import { reviewGame, summarize, type GameReview } from "../lib/review";
 import { useStorageProblem } from "../lib/store";
+import { SYNCED_EVENT } from "../lib/sync/apply";
 import { fetchChessComGames, fetchLichessGames } from "../lib/sources";
 import { computeFeatures } from "../lib/features";
 import type { GameFeatures } from "../lib/style";
@@ -44,6 +45,12 @@ function savedNames(): { lichess: string; chesscom: string } {
 
 export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLegend, onTraits }: Props) {
   const [names, setNames] = useState(() => ({ ...savedNames(), ...(initialNames?.lichess ? { lichess: initialNames.lichess } : {}), ...(initialNames?.chesscom ? { chesscom: initialNames.chesscom } : {}) }));
+  // Usernames saved to the account arrive after login; show them in the boxes without a reload.
+  useEffect(() => {
+    const refresh = () => setNames((n) => ({ ...n, ...savedNames() }));
+    window.addEventListener(SYNCED_EVENT, refresh);
+    return () => window.removeEventListener(SYNCED_EVENT, refresh);
+  }, []);
   const [count, setCount] = useState(100);
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
@@ -229,7 +236,7 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
 
       {!profile && !loading && games.length === 0 && (
         <p className="muted intro">
-          Enter your Lichess and/or Chess.com username. Your public games are loaded straight from each site into this page. Nothing is sent anywhere else.
+          Enter your Lichess and/or Chess.com username. Your public games are loaded straight from each site into this page. Nothing is sent anywhere else unless you log in, in which case your usernames, settings and progress are saved to your account so they follow you between devices.
         </p>
       )}
 
