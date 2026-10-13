@@ -774,3 +774,13 @@ th.num .th-sort { justify-content: flex-end; }
 .progress-card { display: flex; flex-direction: column; gap: 2px; margin: 0; }
 .progress-value { font-size: 1.6rem; line-height: 1.2; }
 .progress .chips .chip { text-transform: none; }
+
+/* On a narrow screen the account bar can't float in the corner (it lands on top of the title, wrapped or not, once someone is
+   logged in and the bar holds their name): it sits under the title. */
+@media (max-width: 900px) {
+  .app-header { display: flex; flex-direction: column; align-items: center; }
+  .app-header h1 { order: 1; }
+  .account-bar { position: static; order: 2; margin: 0 0 10px; justify-content: center; flex-wrap: wrap; max-width: 100%; }
+  .app-header > p { order: 3; }
+  .app-header > .tabs { order: 4; align-self: stretch; }
+}
