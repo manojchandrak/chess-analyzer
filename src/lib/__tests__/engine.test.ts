@@ -90,6 +90,17 @@ describe("StockfishEngine", () => {
     engine.terminate();
   });
 
+  it("answers someone who is waiting before the rest of a background review", async () => {
+    const engine = new StockfishEngine(1);
+    const review = ["fen-1", "fen-2", "fen-3", "fen-4"].map((f) => engine.evaluate(f, 5, { background: true }));
+    const reply = engine.evaluate("fen-reply", 5);
+    const hint = engine.evaluate("fen-hint", 5);
+    await Promise.all([...review, reply, hint]);
+    const order = FakeWorker.instances[0].sent.filter((c) => c.startsWith("position fen")).map((c) => c.replace("position fen ", ""));
+    // fen-1 was already running when the others arrived; then the two interactive requests, in the order asked; then the review
+    expect(order).toEqual(["fen-1", "fen-reply", "fen-hint", "fen-2", "fen-3", "fen-4"]);
+  });
+
   it("sends ucinewgame once per game, not before every position", async () => {
     const engine = new StockfishEngine(1);
     engine.newGame();

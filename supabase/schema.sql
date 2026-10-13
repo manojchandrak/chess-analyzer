@@ -4,7 +4,7 @@
 -- It is safe to run again; it replaces functions and policies but never drops your data.
 --
 -- Who can do what (enforced here with row-level security, not in the web page):
---   * anyone, signed in or not, can read profiles (usernames only), threads and replies
+--   * anyone, signed in or not, can read profiles (the username, the moderator flag and the join date; never the email), threads and replies
 --   * a signed-in person can post threads and replies as themselves, and edit or delete their own
 --   * a moderator (profiles.is_admin = true) can also delete, pin and lock anything
 --   * nobody can post as someone else, change who wrote a post, or make themselves a moderator

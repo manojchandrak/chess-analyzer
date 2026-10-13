@@ -115,7 +115,7 @@ export async function analyzeGame(
   let done = 0;
   const evals: EngineEval[] = await Promise.all(
     fens.map(async (fen) => {
-      const e = await engine.evaluate(fen, depth, { multiPv: opts.multiPv });
+      const e = await engine.evaluate(fen, depth, { multiPv: opts.multiPv, background: true });
       onProgress?.(++done, fens.length);
       return e;
     }),
