@@ -82,13 +82,31 @@ describe("keeping a device and an account in step", () => {
     const userId = await signedIn(backend, "Alice");
     const storage = fakeStorage({ [SYNC_KEYS.puzzles]: '["p1"]' });
     const failing: ForumBackend = { ...backend, saveUserData: () => Promise.reject(new Error("offline")) };
-    const { sync, statuses } = setup(failing, storage, userId);
+    let clock = 5_000_000;
+    const statuses: SyncStatus[] = [];
+    const sync = createSync({ backend: failing, storage, userId, onStatus: (s) => statuses.push(s), now: () => clock });
     await sync.run();
     expect(statuses.at(-1)).toBe("error");
+    clock += 61_000; // once the wait is over, the unsaved change is still pending
     expect(sync.hasChanges()).toBe(true);
     const retry = setup(backend, storage, userId);
     await retry.sync.run();
     expect((await backend.loadUserData()).puzzles.value).toEqual(["p1"]);
+  });
+
+  it("waits a minute after a failed save before the background check tries again", async () => {
+    const backend = createMemoryBackend();
+    const userId = await signedIn(backend, "Alice");
+    const storage = fakeStorage({ [SYNC_KEYS.puzzles]: '["p1"]' });
+    let clock = 1_000_000;
+    const failing: ForumBackend = { ...backend, saveUserData: () => Promise.reject(new Error("offline")) };
+    const sync = createSync({ backend: failing, storage, userId, now: () => clock });
+    await sync.run();
+    expect(sync.hasChanges()).toBe(false);
+    clock += 30_000;
+    expect(sync.hasChanges()).toBe(false);
+    clock += 31_000;
+    expect(sync.hasChanges()).toBe(true);
   });
 
   it("quietly stops trying when the database has no place to put saved data yet", async () => {
@@ -127,6 +145,23 @@ describe("keeping a device and an account in step", () => {
     expect(storage.data.get(SYNC_KEYS.puzzles)).toBeUndefined();
     await sync.run();
     expect(await backend.loadUserData()).toEqual({});
+  });
+
+  it("saves the history and favourites of both Lichess and Chess.com games to the account and restores them on another device", async () => {
+    const entry = (id: string, source: string, favorite: boolean, at: number) => ({ id, favorite, opened: true, openedAt: at, updatedAt: at, game: { id, source, white: "A", black: "B", moves: "e4 e5" } });
+    const history = { "lichess:abc123": entry("lichess:abc123", "lichess", true, 2000), "chesscom:777": entry("chesscom:777", "chesscom", false, 1000) };
+    const backend = createMemoryBackend();
+    const userId = await signedIn(backend, "Alice");
+    await setup(backend, fakeStorage({ [SYNC_KEYS.history]: JSON.stringify(history) }), userId).sync.run();
+    const saved = (await backend.loadUserData()).history.value as Record<string, { favorite: boolean }>;
+    expect(Object.keys(saved).sort()).toEqual(["chesscom:777", "lichess:abc123"]);
+    expect(saved["lichess:abc123"].favorite).toBe(true);
+
+    const phone = fakeStorage();
+    const { sync, onApplied } = setup(backend, phone, userId);
+    await sync.run();
+    expect(Object.keys(JSON.parse(phone.data.get(SYNC_KEYS.history)!)).sort()).toEqual(["chesscom:777", "lichess:abc123"]);
+    expect(onApplied).toHaveBeenCalled();
   });
 
   it("only lets people see their own saved data", async () => {

@@ -1,6 +1,7 @@
 import { reloadBoardPrefs } from "../boardPrefs.ts";
 import { reloadProgress } from "../drills.ts";
 import { reloadGameStats } from "../gameStats.ts";
+import { reloadHistory } from "../history.ts";
 
 /** Makes the running app pick up saved data that was just written into browser storage. (Usernames, options and
  * solved puzzles are read when their screens open, so they need nothing.) */
@@ -8,6 +9,7 @@ export function refreshAfterSync(): void {
   reloadProgress();
   reloadGameStats();
   reloadBoardPrefs();
+  reloadHistory();
   window.dispatchEvent(new Event(SYNCED_EVENT));
 }
 

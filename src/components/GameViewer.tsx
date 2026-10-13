@@ -21,6 +21,7 @@ import { BoardSettings } from "./BoardSettings";
 import { ClassificationTable } from "./ClassificationTable";
 import { EngineLines } from "./EngineLines";
 import { ExploreView } from "./ExploreView";
+import { FavoriteStar } from "./FavoriteStar";
 import { EvalBar } from "./EvalBar";
 import { EvalChart } from "./EvalChart";
 import { PhaseTable } from "./PhaseTable";
@@ -230,7 +231,10 @@ export function GameViewer({ game, record, engine, heading, onBack, autoAnalyzeD
           </button>
         )}
         <div>
-          <h2>{heading ?? `${game.white} vs ${game.black}`}</h2>
+          <h2>
+            {record && <FavoriteStar game={record} />}
+            {heading ?? `${game.white} vs ${game.black}`}
+          </h2>
           <p className="muted">
             {game.white}
             {game.whiteElo ? ` (${game.whiteElo})` : ""} – {game.black}

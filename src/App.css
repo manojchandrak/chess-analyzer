@@ -744,3 +744,21 @@ th.num .th-sort { justify-content: flex-end; }
 .new-game h3 { margin: 0 0 2px; }
 .new-game p { margin: 0; }
 .new-game-actions { display: flex; gap: 8px; }
+
+/* ---------- Game history and favourites ---------- */
+.star { background: none; border: none; padding: 2px 6px; font-size: 1.15rem; line-height: 1; cursor: pointer; color: var(--text-muted); }
+.star:hover { color: #e0a800; }
+.star-on { color: #e0a800; }
+.history { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.history-head h2 { margin: 0 0 2px; }
+.history-head p { margin: 0; }
+.history-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.history-filters input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.history-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-alt); }
+.history-open { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: none; padding: 2px 4px; color: var(--text); font: inherit; cursor: pointer; }
+.history-open:hover .history-players { text-decoration: underline; }
+.history-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.history-meta .tag { margin-left: 0; }
+.star-col { width: 1%; padding-left: 4px; padding-right: 0; }
+.history-filters .chip { text-transform: none; }

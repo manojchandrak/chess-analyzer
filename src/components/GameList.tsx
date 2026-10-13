@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ecoFamily } from "../lib/eco";
 import { scoreFor, type GameRecord } from "../lib/games";
 import { useGameStats } from "../lib/gameStats";
+import { FavoriteStar } from "./FavoriteStar";
 import { DEFAULT_DIRECTION, needsReview, PRESETS, presetOf, sortGames, toggleSort, type Sort, type SortBy } from "../lib/gameSort";
 
 interface Props {
@@ -104,6 +105,7 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
       <table>
         <thead>
           <tr>
+            <th className="star-col" aria-label="Favourite" />
             <SortHeader by="date" sort={sort} onSort={(by) => setSort(toggleSort(sort, by))} title="Date">
               Date
             </SortHeader>
@@ -146,6 +148,9 @@ export function GameList({ games, onOpen, pageSize = 25, onReview, reviewing }: 
             );
             return (
               <tr key={g.id} onClick={() => onOpen(g)} className="clickable">
+                <td className="star-col">
+                  <FavoriteStar game={g} />
+                </td>
                 <td className="nowrap">{g.date ?? "?"}</td>
                 <td>
                   <span className={`color-dot color-${color}`} title={color === "w" ? "Played White" : "Played Black"} />
