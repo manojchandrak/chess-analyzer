@@ -17,6 +17,8 @@ import { loadLegendGames, loadLegendIndex, withMoves } from "./lib/legendData";
 import { parsePgn, parseRecord, type ParsedGame } from "./lib/pgn";
 import type { Traits } from "./lib/profile";
 import { buildHash, isShareable, parseHash, type Route, type Tab } from "./lib/route";
+import { AnalyticsConsent } from "./components/AnalyticsConsent";
+import { AboutPage, PrivacyPage } from "./components/InfoPages";
 import { fetchLichessGame } from "./lib/sources";
 
 interface Viewing {
@@ -64,6 +66,11 @@ function App() {
     returnTab.current = tab === "login" ? "forum" : tab;
     setViewing(null);
     setTab("login");
+  };
+  const openInfo = (page: "about" | "privacy") => {
+    setViewing(null);
+    setTab(page);
+    window.scrollTo(0, 0);
   };
   const [userTraits, setUserTraits] = useState<Traits | null>(null);
   const [pgnText, setPgnText] = useState("");
@@ -244,10 +251,21 @@ function App() {
       {/* The forum and login mount only while they are open, so visitors who never use them cost the forum nothing. */}
       {!viewing && current === "forum" && <Forum threadId={thread} onOpenThread={setThread} onLogin={openLogin} />}
       {!viewing && current === "login" && <LoginPage onDone={() => setTab(returnTab.current)} />}
+      {!viewing && current === "about" && <AboutPage onClose={() => setTab("mine")} />}
+      {!viewing && current === "privacy" && <PrivacyPage onClose={() => setTab("mine")} />}
 
       <footer className="app-footer muted small">
         Engine: Stockfish 19 (WASM), running in your browser. Games load directly from the Lichess and Chess.com public APIs. Legends' games from PGN Mentor.
+        <nav className="footer-links" aria-label="About this site">
+          <button className="link-button" onClick={() => openInfo("about")}>
+            About
+          </button>
+          <button className="link-button" onClick={() => openInfo("privacy")}>
+            Privacy
+          </button>
+        </nav>
       </footer>
+      <AnalyticsConsent onOpenPrivacy={() => openInfo("privacy")} />
     </div>
   );
 }

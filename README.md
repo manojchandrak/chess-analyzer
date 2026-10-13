@@ -101,6 +101,12 @@ Live at: https://manojchandrak.github.io/chess-analyzer/
   safe: progress from two devices is combined, and one person's data is cleared from a shared
   browser before someone else's is loaded. Full engine reviews stay in the browser only, as
   they are large and can be recomputed. Not logged in, nothing leaves the browser.
+- **About and Privacy pages** (footer links): what the site is, what is stored where, and buttons
+  to delete your saved account data or clear everything this site stored in your browser.
+- **Optional Google Analytics**: set `VITE_GA_MEASUREMENT_ID` (a GA4 id like `G-ABC123XYZ`, in
+  `.env.local` and as a GitHub Actions variable) to turn it on. Nothing loads until the visitor
+  accepts a small banner; only the tab name is reported (never usernames, games or thread ids),
+  IPs are anonymised and ad features are off. Without the variable the banner never appears.
 - **Sort games** (yours or a legend's): click any column header (date, opponent rating,
   result, opening, brilliant/great moves, accuracy, performance) to sort by it, and click
   again to reverse; the Sort menu has presets such as fewest blunders and longest games.

@@ -57,6 +57,18 @@ function request<T>(db: IDBDatabase, mode: IDBTransactionMode, run: (store: IDBO
   });
 }
 
+/** Deletes every cached engine review stored in this browser. */
+export async function clearReviews(): Promise<void> {
+  memory.clear();
+  (await dbPromise)?.close();
+  dbPromise = null;
+  if (typeof indexedDB === "undefined") return;
+  await new Promise<void>((done) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = req.onerror = req.onblocked = () => done();
+  });
+}
+
 export async function storeGet<T>(key: string): Promise<T | undefined> {
   if (memory.has(key)) return memory.get(key) as T;
   const db = await openDb();

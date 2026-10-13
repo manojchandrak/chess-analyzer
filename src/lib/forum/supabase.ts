@@ -170,6 +170,13 @@ export async function createSupabaseBackend(url: string, anonKey: string): Promi
       if (error) throw userDataError(error);
       return data.updated_at as string;
     },
+    async deleteUserData() {
+      const { data: auth } = await supabase.auth.getSession();
+      const userId = auth.session?.user.id;
+      if (!userId) throw new Error("Log in to manage your saved data.");
+      const { error } = await supabase.from("user_data").delete().eq("user_id", userId);
+      if (error) throw userDataError(error);
+    },
     async availableProviders() {
       try {
         const res = await fetch(`${url.replace(/\/$/, "")}/auth/v1/settings`, { headers: { apikey: anonKey } });

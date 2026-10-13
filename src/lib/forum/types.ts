@@ -96,6 +96,8 @@ export interface ForumBackend {
   loadUserData(): Promise<Record<string, UserDataEntry>>;
   /** Saves one kind of data, replacing what was there, and returns when it was saved. */
   saveUserData(key: string, value: unknown): Promise<string>;
+  /** Deletes everything the signed-in person has saved to their account (not their posts or the account itself). */
+  deleteUserData(): Promise<void>;
 
   // --- forum ---
   listThreads(opts: { category?: CategoryId; page: number; pageSize: number }): Promise<ThreadList>;

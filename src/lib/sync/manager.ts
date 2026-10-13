@@ -28,6 +28,17 @@ export interface SyncOptions {
   onStatus?: (status: SyncStatus) => void;
 }
 
+/** After a person deletes their saved data from their account: forget this device's copy too, so it isn't saved again. */
+export function clearSavedOnDevice(storage: SyncStorage): void {
+  for (const name of SYNC_NAMES) storage.removeItem(SYNC_KEYS[name]);
+  try {
+    const meta = JSON.parse(storage.getItem(META_KEY) ?? "null") as { owner?: unknown } | null;
+    storage.setItem(META_KEY, JSON.stringify({ owner: typeof meta?.owner === "string" ? meta.owner : null, fingerprints: {} }));
+  } catch {
+    storage.removeItem(META_KEY);
+  }
+}
+
 export function createSync({ backend, storage, userId, onApplied, onStatus }: SyncOptions) {
   let unavailable = false;
   let running: Promise<void> | null = null;
