@@ -22,7 +22,7 @@ export function AboutPage({ onClose }: { onClose: () => void }) {
         <li>
           No ads. {analyticsAvailable ? "Anonymous usage statistics (Google Analytics) are collected only if you allow them in the banner." : "No analytics or tracking scripts."} Reviewing games works without an account.
         </li>
-        <li>Reviews run on your own device, so there is no per-game limit and your games are not uploaded to anyone.</li>
+        <li>Reviews run on your own device, so there is no per-game limit and your games are not uploaded to anyone. The same goes for pictures: a screenshot or photo you upload to read moves or a board is read in your browser and never leaves it.</li>
         <li>An optional account (email, Google or GitHub) saves your usernames, settings and progress so they follow you between devices, and lets you post in the Community tab.</li>
       </ul>
       <h3>Install it</h3>

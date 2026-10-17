@@ -56,7 +56,7 @@ Live at: https://mychessanalyzer.com/
   explore, or play White or Black against Stockfish at three strengths (beginner, club,
   strong), with live evaluation, engine lines, undo, a best-move hint and game-over
   detection. You can also start from any position by pasting a FEN on the *Analyze a
-  game* tab.
+  game* tab, or by uploading a picture of a board (see *Analyze from a picture*).
 - **Engine lines and arrows**: with Stockfish on, the viewer shows the top three
   lines with arrows on the board (click a line to emphasize it), and a green arrow
   for the move you should have played. **Download PGN** saves the game with
@@ -172,6 +172,26 @@ Live at: https://mychessanalyzer.com/
   - Spaced repetition: clean solves come back after 1, 3, 7, 16 and 35 days,
     misses come back sooner, and each phase shows how many drills you've
     mastered. Progress is saved in your browser.
+- **Analyze from a picture**: on the *Analyze a game* tab, upload (or drag in, or paste) a
+  screenshot or photo. Two kinds are read, both on your device, so the picture is never
+  uploaded:
+  - *A list of moves* (a scoresheet, or a screenshot of written or printed moves): the text is
+    read with [Tesseract](https://github.com/naptha/tesseract.js) (WebAssembly), then every move is
+    checked against the rules of chess. A move that was misread (`1/l`, `5/S`, `b/6`, `0/O`, a lost
+    capture sign, a stray character, two moves run together) is corrected only when the corrected
+    move is legal there, and the rest of the game is used to choose between readings. Every
+    correction is listed, with other possibilities where the game fits more than one, and the text
+    stays editable, with a live check, before it is analyzed. Typed or printed text reads best;
+    handwriting usually needs fixes.
+  - *A board position*: the board is found automatically (drag the box to adjust), and each square is
+    compared with the pieces of this site's piece sets (the Lichess sets), measuring each square's own
+    colour so highlights and board colours don't matter. It also works out which side is at the
+    bottom. The result is an editable board (pick a piece, click a square), with the squares it was
+    unsure about outlined, and it opens in the same *play on from this position* view as a pasted
+    FEN. Screenshots in one of those piece styles read very reliably; other styles and angled photos
+    make mistakes, and the page says so.
+  The reader's files (about 7 MB) are served from this site (`public/engine/ocr/`, credits in
+  `CREDITS.md` there) and only download when the feature is used.
 - **Analyze a game**: pick one of your recent Lichess or Chess.com games for a
   full review, or paste/drop any PGN. Your own games are reviewed as soon as
   they open. Choose how many games to load per site (10 to 100). The accuracy,

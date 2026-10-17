@@ -6,6 +6,7 @@ import { Legends } from "./components/Legends";
 import { LoginPage } from "./components/LoginPage";
 import { AccountMenu } from "./components/AccountMenu";
 import { FenInput } from "./components/FenInput";
+import { ImageInput } from "./components/ImageInput";
 import { Forum } from "./components/Forum";
 import { MyGames } from "./components/MyGames";
 import { PgnInput } from "./components/PgnInput";
@@ -188,9 +189,13 @@ function App() {
   }
 
   function analyzePgn() {
+    analyzeText(pgnText);
+  }
+
+  function analyzeText(text: string) {
     setPgnError(null);
     try {
-      const game = parsePgn(pgnText);
+      const game = parsePgn(text);
       if (game.moves.length === 0) throw new Error("No moves found — check that this is a valid PGN.");
       scrollBack.current = window.scrollY;
       setViewing({ game, record: null, autoAnalyzeDepth: depth });
@@ -272,6 +277,8 @@ function App() {
         <h3 className="or-heading">Or paste a PGN</h3>
         <PgnInput pgnText={pgnText} onChange={setPgnText} depth={depth} onDepthChange={setDepth} onAnalyze={analyzePgn} disabled={!engine} />
         {pgnError && <p className="error-message">{pgnError}</p>}
+        <h3 className="or-heading">Or upload a picture</h3>
+        <ImageInput onAnalyzePgn={analyzeText} onAnalyzeFen={startFromFen} disabled={!engine} />
       </div>
 
       <div hidden={!!viewing || current !== "drills"}>
