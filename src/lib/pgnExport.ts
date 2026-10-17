@@ -36,7 +36,7 @@ export function annotatedPgn(game: ParsedGame, record: GameRecord | null | undef
     tag("BlackElo", game.blackElo),
     tag("ECO", record?.eco),
     tag("Opening", record?.opening),
-    tag("Annotator", "Chess Game Analyzer (Stockfish)"),
+    tag("Annotator", "MyChessAnalyzer (Stockfish)"),
   ].filter(Boolean);
 
   const parts: string[] = [];

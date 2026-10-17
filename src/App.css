@@ -784,3 +784,31 @@ th.num .th-sort { justify-content: flex-end; }
   .app-header > p { order: 3; }
   .app-header > .tabs { order: 4; align-self: stretch; }
 }
+
+/* ---------- Analyze from a picture ---------- */
+.image-input { margin: 8px 0 24px; }
+.image-input .chips { margin-bottom: 8px; }
+.image-input .dropzone { margin: 10px 0; }
+.image-result { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.image-preview { max-width: 100%; max-height: 260px; object-fit: contain; align-self: flex-start; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.image-label { margin: 4px 0 0; font-size: 0.9rem; color: var(--text-muted); }
+.image-ok { color: var(--good, #1a7f37); margin: 4px 0; font-weight: 600; }
+.image-status p { margin: 4px 0; }
+.image-fixes { margin: 4px 0; font-size: 0.9rem; }
+.image-fixes summary { cursor: pointer; color: var(--text-muted); }
+.image-fixes ul { margin: 6px 0 0; padding-left: 20px; }
+.crop-canvas { width: 100%; max-width: 560px; border: 1px solid var(--border); border-radius: 8px; cursor: crosshair; touch-action: none; background: #fff; }
+.crop-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.edit-board { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; max-width: 400px; border: 1px solid var(--border); }
+.edit-cell { aspect-ratio: 1; padding: 0; border: 0; border-radius: 0; background: var(--light); position: relative; cursor: default; }
+.edit-cell.edit-dark { background: var(--dark); }
+.edit-cell.edit-painting { cursor: pointer; }
+.edit-cell img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.edit-cell.edit-unsure { outline: 3px solid #e5534b; outline-offset: -3px; z-index: 1; }
+.edit-cell:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
+.palette { display: flex; flex-wrap: wrap; gap: 4px; max-width: 460px; }
+.palette-item { width: 40px; height: 40px; padding: 2px; border-radius: 8px; border: 1px solid var(--border); background: var(--card, var(--bg)); color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.palette-item img { width: 100%; height: 100%; }
+.palette-item.palette-on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent); }
+.fen-readout { width: 100%; max-width: 560px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 0.85rem ui-monospace, monospace; }
+.image-input .chip { text-transform: none; }

@@ -1,4 +1,4 @@
-/* Chess Game Analyzer service worker.
+/* MyChessAnalyzer service worker.
  * Makes the site installable and lets the board, drills and the engine work offline after a first visit.
  * It only handles this site's own files; calls to Lichess, Chess.com and Supabase always go straight to the network,
  * so loading games and logging in still need a connection and nothing about them is ever cached here. */

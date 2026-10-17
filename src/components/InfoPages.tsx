@@ -12,7 +12,7 @@ const PRIVACY_UPDATED = "13 October 2026";
 export function AboutPage({ onClose }: { onClose: () => void }) {
   return (
     <section className="card info-page" aria-labelledby="about-title">
-      <h2 id="about-title">About Chess Game Analyzer</h2>
+      <h2 id="about-title">About MyChessAnalyzer</h2>
       <p>
         A free tool for understanding your own chess. Load your recent Lichess and Chess.com games, review them with Stockfish right in your browser, see where you lose points and what your playing style is like, then study how the legends played and train
         openings, middlegames and endgames with drills.
@@ -22,7 +22,7 @@ export function AboutPage({ onClose }: { onClose: () => void }) {
         <li>
           No ads. {analyticsAvailable ? "Anonymous usage statistics (Google Analytics) are collected only if you allow them in the banner." : "No analytics or tracking scripts."} Reviewing games works without an account.
         </li>
-        <li>Reviews run on your own device, so there is no per-game limit and your games are not uploaded to anyone.</li>
+        <li>Reviews run on your own device, so there is no per-game limit and your games are not uploaded to anyone. The same goes for pictures: a screenshot or photo you upload to read moves or a board is read in your browser and never leaves it.</li>
         <li>An optional account (email, Google or GitHub) saves your usernames, settings and progress so they follow you between devices, and lets you post in the Community tab.</li>
       </ul>
       <h3>Install it</h3>

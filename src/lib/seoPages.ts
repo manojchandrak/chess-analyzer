@@ -5,7 +5,7 @@
 import type { LineDrill } from "./drillData.ts";
 import type { LegendGameRow, LegendIndexEntry } from "./legends.ts";
 
-export const SITE_NAME = "Chess Game Analyzer";
+export const SITE_NAME = "MyChessAnalyzer";
 
 export interface Site {
   /** Where the site lives, without a trailing slash, e.g. "https://manojchandrak.github.io". */
