@@ -1,4 +1,4 @@
-# Chess Game Analyzer
+# MyChessAnalyzer
 
 Load your games from Lichess and Chess.com to see your playing style and
 where you can improve, compare yourself with 12 legendary players, and study

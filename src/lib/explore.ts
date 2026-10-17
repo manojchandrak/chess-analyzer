@@ -134,7 +134,7 @@ export function exploreToPgn(s: ExploreState, meta: { white: string; black: stri
   const tag = (name: string, value: string) => `[${name} "${value.replace(/["\\]/g, "")}"]`;
   const tags = [
     tag("Event", meta.event ?? "Casual game"),
-    tag("Site", "Chess Game Analyzer"),
+    tag("Site", "MyChessAnalyzer"),
     tag("Date", `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`),
     tag("Round", "-"),
     tag("White", meta.white),

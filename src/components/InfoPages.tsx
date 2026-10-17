@@ -12,7 +12,7 @@ const PRIVACY_UPDATED = "13 October 2026";
 export function AboutPage({ onClose }: { onClose: () => void }) {
   return (
     <section className="card info-page" aria-labelledby="about-title">
-      <h2 id="about-title">About Chess Game Analyzer</h2>
+      <h2 id="about-title">About MyChessAnalyzer</h2>
       <p>
         A free tool for understanding your own chess. Load your recent Lichess and Chess.com games, review them with Stockfish right in your browser, see where you lose points and what your playing style is like, then study how the legends played and train
         openings, middlegames and endgames with drills.

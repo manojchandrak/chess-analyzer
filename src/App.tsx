@@ -211,7 +211,7 @@ function App() {
       <OfflineNote />
       <header className="app-header">
         <AccountMenu onLogin={openLogin} />
-        <h1>Chess Game Analyzer</h1>
+        <h1>MyChessAnalyzer</h1>
         <p>Load your Lichess and Chess.com games to see your playing style and where to improve, study how the legends played, or train openings, middlegames and endgames with drills.</p>
         <nav className="tabs" role="tablist">
           {TABS.map((t) => (
