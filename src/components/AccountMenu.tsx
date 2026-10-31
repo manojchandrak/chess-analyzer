@@ -20,7 +20,7 @@ export function AccountMenu({ onLogin }: { onLogin: () => void }) {
   if (!session) {
     return (
       <div className="account-bar">
-        <button className="btn btn-ghost" onClick={onLogin}>
+        <button className="btn btn-primary btn-login" onClick={onLogin}>
           Log in
         </button>
       </div>
