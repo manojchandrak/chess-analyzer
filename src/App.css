@@ -684,6 +684,8 @@ th.num .th-sort { justify-content: flex-end; }
 
 /* ---------- Login and account ---------- */
 .account-bar { position: absolute; top: 12px; right: 16px; display: flex; gap: 10px; align-items: center; font-size: 0.9rem; }
+.btn-login { padding: 7px 18px; font-weight: 600; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+.btn-login:hover { filter: brightness(1.1); }
 .account-name { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
 .app-header { position: relative; }
 .login-page { max-width: 420px; margin: 24px auto; display: flex; flex-direction: column; gap: 12px; }
