@@ -7,6 +7,8 @@ import { buildProfile, similarity, type Traits } from "../lib/profile";
 import { EngineError } from "../lib/engine";
 import { reviewGame, summarize, type GameReview } from "../lib/review";
 import { useStorageProblem } from "../lib/store";
+import { useAuth } from "../lib/forum/auth-context";
+import { readUsernames, saveUsernames } from "../lib/usernames";
 import { SYNCED_EVENT } from "../lib/sync/apply";
 import { fetchChessComGames, fetchLichessGames } from "../lib/sources";
 import { computeFeatures } from "../lib/features";
@@ -18,6 +20,7 @@ import { addMistakes } from "../lib/mistakes";
 import { backfillGameMeta } from "../lib/gameStats";
 import { buildTrends } from "../lib/trends";
 import { GameList } from "./GameList";
+import { UsernameOwnership } from "./UsernameOwnership";
 import { PuzzleDrill } from "./PuzzleDrill";
 import { TrendsView } from "./TrendsView";
 import { ProfileView } from "./ProfileView";
@@ -35,17 +38,14 @@ interface Props {
   onTraits: (traits: Traits | null) => void;
 }
 
-const STORAGE_KEY = "chess-analyzer:usernames";
-
 function savedNames(): { lichess: string; chesscom: string } {
-  try {
-    return { lichess: "", chesscom: "", ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") };
-  } catch {
-    return { lichess: "", chesscom: "" };
-  }
+  const { lichess, chesscom } = readUsernames();
+  return { lichess, chesscom };
 }
 
 export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLegend, onTraits }: Props) {
+  const { session } = useAuth();
+  const [loadedNames, setLoadedNames] = useState<{ lichess: string; chesscom: string } | null>(null);
   const [names, setNames] = useState(() => ({ ...savedNames(), ...(initialNames?.lichess ? { lichess: initialNames.lichess } : {}), ...(initialNames?.chesscom ? { chesscom: initialNames.chesscom } : {}) }));
   // Usernames saved to the account arrive after login; show them in the boxes without a reload.
   useEffect(() => {
@@ -115,11 +115,8 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
     const lichess = names.lichess.trim();
     const chesscom = names.chesscom.trim();
     if (!lichess && !chesscom) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ lichess, chesscom }));
-    } catch {
-      // not remembered; fine
-    }
+    saveUsernames({ lichess, chesscom }, !!session);
+    setLoadedNames({ lichess, chesscom });
     onLoaded?.({ lichess, chesscom });
     const gen = ++loadGen.current;
     const controller = new AbortController();
@@ -230,6 +227,7 @@ export function MyGames({ engine, initialNames, onLoaded, onOpenGame, onOpenLege
         )}
         {count === 0 && !loading && <p className="muted small load-hint">Loading every game can take a while for big accounts: Lichess sends roughly 10–20 games a second (Chess.com is much faster). You can stop at any point and keep what has loaded.</p>}
       </form>
+      <UsernameOwnership loaded={loadedNames} />
 
       {(loading || messages.length > 0) && (
         <ul className="messages">

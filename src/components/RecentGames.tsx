@@ -1,24 +1,23 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { SYNCED_EVENT } from "../lib/sync/apply";
+import { useAuth } from "../lib/forum/auth-context";
+import { readUsernames, saveUsernames } from "../lib/usernames";
 import { useAutoReview } from "../hooks/useAutoReview";
 import type { StockfishEngine } from "../lib/engine";
 import type { GameRecord, TimeClass } from "../lib/games";
 import { cleanFilter, filterGames, isFiltered, NO_FILTER, type GameFilter } from "../lib/gameFilter";
 import { fetchChessComGames, fetchLichessGames } from "../lib/sources";
 import { GameList } from "./GameList";
+import { UsernameOwnership } from "./UsernameOwnership";
 
-const STORAGE_KEY = "chess-analyzer:usernames";
 const OPTIONS_KEY = "chess-analyzer:recent-options";
 const COUNTS = [10, 15, 25, 50, 100];
 const PAGE_SIZES = [5, 10, 25, 50];
 const TIME_CLASSES: TimeClass[] = ["bullet", "blitz", "rapid", "classical", "daily"];
 
 function savedNames(): { lichess: string; chesscom: string } {
-  try {
-    return { lichess: "", chesscom: "", ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") };
-  } catch {
-    return { lichess: "", chesscom: "" };
-  }
+  const { lichess, chesscom } = readUsernames();
+  return { lichess, chesscom };
 }
 
 /** How many games to load per site and whether to review them automatically, remembered between visits. */
@@ -43,6 +42,8 @@ function savedOptions(): Options {
  * brilliant-move and performance columns are filled in automatically (from what is saved in this browser,
  * from Lichess's own analysis, and by reviewing the rest with Stockfish in the background). */
 export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecord) => void; engine: StockfishEngine | null }) {
+  const { session } = useAuth();
+  const [loadedNames, setLoadedNames] = useState<{ lichess: string; chesscom: string } | null>(null);
   const [names, setNames] = useState(savedNames);
   const [options, setOptions] = useState(savedOptions);
   // Usernames and options saved to the account arrive after login; show them without a reload.
@@ -79,11 +80,8 @@ export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecor
     const lichess = names.lichess.trim();
     const chesscom = names.chesscom.trim();
     if (!lichess && !chesscom) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ lichess, chesscom }));
-    } catch {
-      // not remembered; fine
-    }
+    saveUsernames({ lichess, chesscom }, !!session);
+    setLoadedNames({ lichess, chesscom });
     setLoading(true);
     const results = await Promise.allSettled([lichess ? fetchLichessGames(lichess, options.count) : Promise.resolve([]), chesscom ? fetchChessComGames(chesscom, options.count) : Promise.resolve([])]);
     const loaded = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
@@ -124,6 +122,7 @@ export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecor
           Fill in accuracy, brilliant moves and performance automatically
         </label>
       </form>
+      <UsernameOwnership loaded={loadedNames} />
       {errors.map((e) => (
         <p className="error-message" key={e}>
           {e}
