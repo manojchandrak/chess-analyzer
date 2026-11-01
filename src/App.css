@@ -696,6 +696,7 @@ th.num .th-sort { justify-content: flex-end; }
 .social-buttons { display: flex; flex-direction: column; gap: 8px; }
 .social-buttons .btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 9px 12px; }
 .provider-icon { width: 18px; height: 18px; flex: 0 0 auto; }
+.provider-knight { display: inline-flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; }
 .login-or { text-align: center; margin: 0; }
 .login-links { display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; font-size: 0.9rem; }
 .login-notice { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.92rem; }

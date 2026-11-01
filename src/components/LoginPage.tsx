@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../lib/forum/auth-context";
 import type { OAuthProvider } from "../lib/forum/types";
-import { ProviderIcon } from "./ProviderIcon";
+import { LichessIcon, ProviderIcon } from "./ProviderIcon";
+import { finishLichessLogin, initialCallback, lichessLoginEnabled, startLichessLogin } from "../lib/lichessAuth";
+import { SYNCED_EVENT } from "../lib/sync/apply";
+import { markMine } from "../lib/usernames";
 import { LIMITS, validateEmail, validatePassword, validateUsername } from "../lib/forum/validation";
 
 type Mode = "login" | "signup" | "forgot" | "recovery";
@@ -15,6 +18,9 @@ const TITLES: Record<Mode, string> = {
 
 const PROVIDER_NAMES: Record<OAuthProvider, string> = { google: "Google", github: "GitHub" };
 
+// The return from Lichess is handled once, even if React runs the effect twice (the one-time code can only be used once).
+let handledCode: string | null = null;
+
 /** Log in, sign up (email and password, or Google / GitHub), reset a password, or set a new one after following a reset link. */
 export function LoginPage({ onDone }: { onDone: () => void }) {
   const { backend, session, recovering, finishRecovery } = useAuth();
@@ -22,7 +28,7 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(initialCallback !== null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [providers, setProviders] = useState<OAuthProvider[]>([]);
@@ -35,6 +41,24 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
     return () => {
       current = false;
     };
+  }, [backend]);
+
+  // Coming back from Lichess: swap the code for a login, then remember the Lichess username on the account.
+  useEffect(() => {
+    const callback = initialCallback;
+    if (!backend || !callback) return;
+    const id = callback.code ?? callback.error;
+    if (handledCode === id) return;
+    handledCode = id;
+    window.history.replaceState(null, "", "#/login");
+    finishLichessLogin(callback)
+      .then((token) => backend.signInWithLichess(token))
+      .then((lichessName) => {
+        markMine("lichess", lichessName);
+        window.dispatchEvent(new Event(SYNCED_EVENT));
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Something went wrong. Please try again."))
+      .finally(() => setBusy(false));
   }, [backend]);
 
   if (!backend) return null;
@@ -114,7 +138,7 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
     );
   }
 
-  const social = providers.length > 0 && (active === "login" || active === "signup");
+  const social = (providers.length > 0 || lichessLoginEnabled) && (active === "login" || active === "signup");
 
   return (
     <div className="card login-page">
@@ -135,6 +159,12 @@ export function LoginPage({ onDone }: { onDone: () => void }) {
                 Continue with {PROVIDER_NAMES[provider]}
               </button>
             ))}
+            {lichessLoginEnabled && (
+              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void run(startLichessLogin)}>
+                <LichessIcon />
+                Continue with Lichess
+              </button>
+            )}
           </div>
           <p className="muted small login-or">or use your email</p>
         </>

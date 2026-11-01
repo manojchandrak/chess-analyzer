@@ -84,6 +84,8 @@ export interface ForumBackend {
   signUp(email: string, password: string, username: string): Promise<{ needsConfirmation: boolean }>;
   signIn(email: string, password: string): Promise<void>;
   signInWithProvider(provider: OAuthProvider): Promise<void>;
+  /** Logs in with a Lichess access token (the backend works out which Lichess account it belongs to) and returns that Lichess username. */
+  signInWithLichess(accessToken: string): Promise<string>;
   /** The "Continue with ..." sign-in methods that are switched on, so the login page only offers ones that work. */
   availableProviders(): Promise<OAuthProvider[]>;
   sendPasswordReset(email: string): Promise<void>;
