@@ -282,7 +282,7 @@ function App() {
       </div>
 
       <div hidden={!!viewing || current !== "drills"}>
-        <Drills />
+        <Drills onOpenGame={openRecord} />
       </div>
 
       {/* The forum and login mount only while they are open, so visitors who never use them cost the forum nothing. */}

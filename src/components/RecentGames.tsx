@@ -1,14 +1,17 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { SYNCED_EVENT } from "../lib/sync/apply";
 import { useAutoReview } from "../hooks/useAutoReview";
 import type { StockfishEngine } from "../lib/engine";
-import type { GameRecord } from "../lib/games";
+import type { GameRecord, TimeClass } from "../lib/games";
+import { cleanFilter, filterGames, isFiltered, NO_FILTER, type GameFilter } from "../lib/gameFilter";
 import { fetchChessComGames, fetchLichessGames } from "../lib/sources";
 import { GameList } from "./GameList";
 
 const STORAGE_KEY = "chess-analyzer:usernames";
 const OPTIONS_KEY = "chess-analyzer:recent-options";
 const COUNTS = [10, 15, 25, 50, 100];
+const PAGE_SIZES = [5, 10, 25, 50];
+const TIME_CLASSES: TimeClass[] = ["bullet", "blitz", "rapid", "classical", "daily"];
 
 function savedNames(): { lichess: string; chesscom: string } {
   try {
@@ -19,12 +22,20 @@ function savedNames(): { lichess: string; chesscom: string } {
 }
 
 /** How many games to load per site and whether to review them automatically, remembered between visits. */
-function savedOptions(): { count: number; auto: boolean } {
+type Options = { count: number; auto: boolean; pageSize: number; filter: GameFilter };
+const DEFAULT_OPTIONS: Options = { count: 15, auto: true, pageSize: 10, filter: NO_FILTER };
+
+function savedOptions(): Options {
   try {
-    const saved = JSON.parse(localStorage.getItem(OPTIONS_KEY) ?? "{}") as { count?: number; auto?: boolean };
-    return { count: COUNTS.includes(saved.count as number) ? (saved.count as number) : 15, auto: saved.auto !== false };
+    const saved = JSON.parse(localStorage.getItem(OPTIONS_KEY) ?? "{}") as Partial<Options>;
+    return {
+      count: COUNTS.includes(saved.count as number) ? (saved.count as number) : DEFAULT_OPTIONS.count,
+      auto: saved.auto !== false,
+      pageSize: PAGE_SIZES.includes(saved.pageSize as number) ? (saved.pageSize as number) : DEFAULT_OPTIONS.pageSize,
+      filter: cleanFilter(saved.filter),
+    };
   } catch {
-    return { count: 15, auto: true };
+    return DEFAULT_OPTIONS;
   }
 }
 
@@ -46,6 +57,7 @@ export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecor
   const [games, setGames] = useState<GameRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const shown = useMemo(() => (games ? filterGames(games, options.filter) : null), [games, options.filter]);
   const { progress, error: reviewError, stoppedByUser, stop, retry } = useAutoReview(games, engine, options.auto);
 
   function setOption(change: Partial<typeof options>) {
@@ -56,6 +68,10 @@ export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecor
     } catch {
       // not remembered; fine
     }
+  }
+
+  function setFilter(change: Partial<GameFilter>) {
+    setOption({ filter: { ...options.filter, ...change } });
   }
 
   async function load(e: FormEvent) {
@@ -145,7 +161,46 @@ export function RecentGames({ onAnalyze, engine }: { onAnalyze: (game: GameRecor
               </button>
             </p>
           )}
-          <GameList games={games} onOpen={onAnalyze} pageSize={10} />
+          <div className="chips" role="group" aria-label="Filter games">
+            <select aria-label="Site" value={options.filter.source} onChange={(e) => setFilter({ source: e.target.value as GameFilter["source"] })}>
+              <option value="all">All sites</option>
+              <option value="lichess">Lichess</option>
+              <option value="chesscom">Chess.com</option>
+            </select>
+            <select aria-label="Colour" value={options.filter.color} onChange={(e) => setFilter({ color: e.target.value as GameFilter["color"] })}>
+              <option value="all">Either colour</option>
+              <option value="w">As White</option>
+              <option value="b">As Black</option>
+            </select>
+            <select aria-label="Result" value={options.filter.result} onChange={(e) => setFilter({ result: e.target.value as GameFilter["result"] })}>
+              <option value="all">Any result</option>
+              <option value="win">Wins</option>
+              <option value="draw">Draws</option>
+              <option value="loss">Losses</option>
+            </select>
+            <select aria-label="Time control" value={options.filter.timeClass} onChange={(e) => setFilter({ timeClass: e.target.value as GameFilter["timeClass"] })}>
+              <option value="all">Any time control</option>
+              {TIME_CLASSES.map((t) => (
+                <option key={t} value={t}>
+                  {t[0].toUpperCase() + t.slice(1)}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Games per page" value={options.pageSize} onChange={(e) => setOption({ pageSize: Number(e.target.value) })}>
+              {PAGE_SIZES.map((n) => (
+                <option key={n} value={n}>
+                  {n} per page
+                </option>
+              ))}
+            </select>
+            {isFiltered(options.filter) && (
+              <button type="button" className="link" onClick={() => setOption({ filter: NO_FILTER })}>
+                Clear filters
+              </button>
+            )}
+          </div>
+          {isFiltered(options.filter) && <p className="muted small">Showing {shown?.length ?? 0} of {games.length} games</p>}
+          <GameList games={shown ?? games} onOpen={onAnalyze} pageSize={options.pageSize} />
         </>
       )}
     </div>
