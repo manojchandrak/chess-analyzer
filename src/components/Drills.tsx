@@ -3,6 +3,8 @@ import { DRILLS, type Drill, type DrillPhase } from "../lib/drillData";
 import { drillStatus, nextDrill, phaseProgress, resetProgress, useDrillProgress, type DrillStatus } from "../lib/drills";
 import { useMistakes } from "../lib/mistakes";
 import { DrillSession } from "./DrillSession";
+import type { GameRecord } from "../lib/games";
+import { DailyPuzzle } from "./DailyPuzzle";
 import { MistakeDrills } from "./MistakeDrills";
 
 const PHASES: { id: DrillPhase; label: string; blurb: string }[] = [
@@ -14,9 +16,11 @@ const PHASES: { id: DrillPhase; label: string; blurb: string }[] = [
 const STATUS_LABEL: Record<DrillStatus, string> = { new: "New", due: "Due", learning: "Learning", mastered: "★ Mastered" };
 
 /** Opening, middlegame and endgame drills, scheduled by spaced repetition. */
-export function Drills() {
+export function Drills({ onOpenGame }: { onOpenGame?: (game: GameRecord, heading?: string, ply?: number) => void }) {
   const [phase, setPhase] = useState<DrillPhase>("opening");
-  const [showMistakes, setShowMistakes] = useState(false);
+  const [extra, setExtra] = useState<"daily" | "mistakes" | null>("daily");
+  const showMistakes = extra === "mistakes";
+  const showDaily = extra === "daily";
   const mistakes = useMistakes();
   const [active, setActive] = useState<Drill | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -47,29 +51,34 @@ export function Drills() {
   return (
     <section className="drills">
       <div className="chips drill-phases" role="tablist">
+        <button role="tab" aria-selected={showDaily} className={`chip${showDaily ? " chip-on" : ""}`} onClick={() => setExtra("daily")}>
+          Daily puzzle
+        </button>
         {PHASES.map((p) => {
           const s = phaseProgress(DRILLS, p.id, progress);
           return (
             <button
               key={p.id}
               role="tab"
-              aria-selected={phase === p.id && !showMistakes}
-              className={`chip${phase === p.id && !showMistakes ? " chip-on" : ""}`}
+              aria-selected={phase === p.id && !extra}
+              className={`chip${phase === p.id && !extra ? " chip-on" : ""}`}
               onClick={() => {
                 setPhase(p.id);
-                setShowMistakes(false);
+                setExtra(null);
               }}
             >
               {p.label} <span className="drill-chip-count">{s.mastered}/{s.total}</span>
             </button>
           );
         })}
-        <button role="tab" aria-selected={showMistakes} className={`chip${showMistakes ? " chip-on" : ""}`} onClick={() => setShowMistakes(true)}>
+        <button role="tab" aria-selected={showMistakes} className={`chip${showMistakes ? " chip-on" : ""}`} onClick={() => setExtra("mistakes")}>
           My mistakes{mistakes.length > 0 && <span className="drill-chip-count"> {mistakesToDo > 0 ? `${mistakesToDo} to do` : mistakes.length}</span>}
         </button>
       </div>
 
-      {showMistakes ? (
+      {showDaily ? (
+        <DailyPuzzle onOpenGame={onOpenGame} />
+      ) : showMistakes ? (
         <MistakeDrills />
       ) : (
         <>

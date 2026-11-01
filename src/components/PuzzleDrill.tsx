@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { Result } from "../lib/drills";
 import { checkAnswer, isOwnPiece, legalTargets, loadSolved, saveSolved, type PuzzleItem } from "../lib/puzzles";
 import { sanSquares } from "../lib/uci";
@@ -11,10 +11,14 @@ interface PuzzleProps {
   onSolved?: () => void;
   /** How it went: solved first time (clean), solved after wrong tries, or the answer was shown (failed). */
   onResult?: (result: Result) => void;
+  /** Replaces the default "in your game you played…" line. */
+  prompt?: ReactNode;
+  /** Shown once the puzzle is solved or the answer was shown (for example, to reveal where the position came from). */
+  afterDone?: ReactNode;
 }
 
 /** One position to solve: click a piece then a square, or type the move. Resets for each puzzle (keyed by id). */
-export function Puzzle({ puzzle, onSolved, onResult }: PuzzleProps) {
+export function Puzzle({ puzzle, onSolved, onResult, prompt, afterDone }: PuzzleProps) {
   const [wrongTries, setWrongTries] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -53,10 +57,12 @@ export function Puzzle({ puzzle, onSolved, onResult }: PuzzleProps) {
         <Board fen={puzzle.fen} flipped={puzzle.color === "b"} onSquareClick={onSquare} selected={selected} targets={targets} arrows={answerArrow ? [{ ...answerArrow, color: "#81b64c", opacity: 0.9 }] : []} />
       </div>
       <div className="puzzle-info">
-        <p>
-          <strong>{puzzle.color === "w" ? "White" : "Black"} to move.</strong> In your game{puzzle.opponent ? ` against ${puzzle.opponent}` : ""}
+        {prompt ?? (
+          <p>
+            <strong>{puzzle.color === "w" ? "White" : "Black"} to move.</strong> In your game{puzzle.opponent ? ` against ${puzzle.opponent}` : ""}
           {puzzle.date ? ` (${puzzle.date})` : ""} you played <strong>{puzzle.played}</strong>, a {puzzle.quality}. Find the better move.
-        </p>
+          </p>
+        )}
         <form className="puzzle-form" onSubmit={submitTyped}>
           <label className="muted small" htmlFor="puzzle-move">
             Or type it (e.g. Nf3, O-O, exd5)
@@ -97,6 +103,7 @@ export function Puzzle({ puzzle, onSolved, onResult }: PuzzleProps) {
             Show answer
           </button>
         )}
+        {done && afterDone}
       </div>
     </div>
   );
