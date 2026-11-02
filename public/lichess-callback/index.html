@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Signing in with Lichess…</title>
+  </head>
+  <body>
+    <p>Signing you in with Lichess…</p>
+    <script>
+      // Lichess sends the person here with ?code=…&state=…; pass it to the app, which lives at the site root.
+      var p = new URLSearchParams(location.search);
+      var out = new URLSearchParams();
+      if (p.get("code")) out.set("lcode", p.get("code"));
+      if (p.get("state")) out.set("lstate", p.get("state"));
+      if (p.get("error")) out.set("lerror", p.get("error"));
+      location.replace("../#/login" + (out.toString() ? "?" + out.toString() : ""));
+    </script>
+  </body>
+</html>

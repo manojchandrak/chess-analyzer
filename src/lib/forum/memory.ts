@@ -86,6 +86,17 @@ export function createMemoryBackend(opts: MemoryOptions = {}): ForumBackend {
     async signInWithProvider(_provider: OAuthProvider) {
       throw new Error("Google and GitHub sign-in need the real backend. Use email and password in this demo.");
     },
+    async signInWithLichess(accessToken) {
+      // Demo mode: ask Lichess whose token this is and sign in as a demo account with that name.
+      const res = await fetch("https://lichess.org/api/account", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const who = (await res.json().catch(() => ({}))) as { username?: string };
+      if (!res.ok || !who.username) throw new Error("Lichess didn't accept the login.");
+      const email = `lichess-${who.username.toLowerCase()}@lichess.demo`;
+      const user = users.find((u) => u.email === email) ?? addUser(email, "unused-demo-password", taken(who.username) ? `${who.username}1`.slice(0, 24) : who.username);
+      currentId = user.id;
+      emit("SIGNED_IN");
+      return who.username;
+    },
     async deleteUserData() {
       savedData.delete(requireMe().id);
     },

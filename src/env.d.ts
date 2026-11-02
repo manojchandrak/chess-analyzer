@@ -9,4 +9,6 @@ interface ImportMetaEnv {
   readonly VITE_GA_MEASUREMENT_ID?: string;
   /** "1" runs the forum against an in-memory fake backend, for trying the screens locally. */
   readonly VITE_FORUM_MOCK?: string;
+  /** "1" shows "Continue with Lichess" on the login page (set once the `lichess-login` Supabase function is deployed). */
+  readonly VITE_LICHESS_LOGIN?: string;
 }

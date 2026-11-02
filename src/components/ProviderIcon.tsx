@@ -21,3 +21,12 @@ export function ProviderIcon({ provider }: { provider: OAuthProvider }) {
     </svg>
   );
 }
+
+/** A chess knight, standing in for Lichess's own logo. */
+export function LichessIcon() {
+  return (
+    <span className="provider-icon provider-knight" aria-hidden="true">
+      ♞
+    </span>
+  );
+}

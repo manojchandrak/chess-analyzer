@@ -189,6 +189,13 @@ export async function createSupabaseBackend(url: string, anonKey: string): Promi
       const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: siteUrl() } });
       if (error) throw friendlyError(error);
     },
+    async signInWithLichess(accessToken) {
+      const { data, error } = await supabase.functions.invoke<{ token_hash?: string; username?: string }>("lichess-login", { body: { token: accessToken } });
+      if (error || !data?.token_hash || !data.username) throw new Error("Couldn't log in with Lichess just now. Please try again later.");
+      const { error: otpError } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" });
+      if (otpError) throw friendlyError(otpError);
+      return data.username;
+    },
     async sendPasswordReset(email) {
       throwIf(validateEmail(email));
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: siteUrl() });
